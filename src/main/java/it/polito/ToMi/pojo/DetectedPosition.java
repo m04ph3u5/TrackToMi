@@ -16,6 +16,7 @@ public class DetectedPosition {
 	private int mode;
 	private String beaconId;
 	private String userId;
+	private Integer userMode;
 	
 	public String getId() {
 		return id;
@@ -59,5 +60,10 @@ public class DetectedPosition {
 	public void setUserId(String userId) {
 		this.userId = userId;
 	}
-	
+	public Integer getUserMode() {
+		return userMode;
+	}
+	public void setUserMode(Integer userMode) {
+		this.userMode = userMode;
+	}
 }

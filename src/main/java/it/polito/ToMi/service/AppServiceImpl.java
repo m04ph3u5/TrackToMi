@@ -85,19 +85,20 @@ public class AppServiceImpl implements AppService{
 	@Autowired
 	private UserClusterRepository userClusterRepo;
 
-	public final int IN_VEHICLE=0;
-	public final int ON_BICYCLE=1;
-	public final int ON_FOOT=2;
-	public final int STILL=3;
-	public final int UNKNOWN=4;
-	public final int TILTING=5;
-	public final int WALKING=7;
-	public final int RUNNING=8;
-	public final int ENTER=9;
-	public final int EXIT=10;
-	public final int ONCREATE=11;
-	public final int ONDESTROY=12;
-	private final int ON_BUS=15;
+	public static final int IN_VEHICLE=0;
+	public static final int ON_BICYCLE=1;
+	public static final int ON_FOOT=2;
+	public static final int STILL=3;
+	public static final int UNKNOWN=4;
+	public static final int TILTING=5;
+	public static final int WALKING=7;
+	public static final int RUNNING=8;
+	public static final int ENTER=9;
+	public static final int EXIT=10;
+	public static final int ONCREATE=11;
+	public static final int ONDESTROY=12;
+	public static final int ARRIVED=14;
+	public static final int ON_BUS=15;
 
 	private final int NOPOSITION=1000;
 	private final int STILL_THREESHOLD = 100;  
@@ -263,9 +264,16 @@ public class AppServiceImpl implements AppService{
 			PartialTravel currentPartial = null;
 			
 			for(DetectedPosition p : positions){
+				//Prima iterazione costruisco il partial travel
+				//A questo livello setto al partial travel il modo associato alla prima posizione (ed eventualmente il beaconId).
 				if(currentPartial==null){
 					currentPartial = new PartialTravel();
 					currentPartial.setStart(p.getTimestamp());
+
+					//Aggiorno la mappa degli userMode dentro al partial
+					if(p.getUserMode()!=null)
+						currentPartial.addMode(p.getUserMode());
+					
 					if(p.getBeaconId()!=null && !p.getBeaconId().isEmpty()){
 						p.setMode(ON_BUS);
 						atLeastOneBusTravel=true;
@@ -276,11 +284,20 @@ public class AppServiceImpl implements AppService{
 					}
 					InfoPosition i = new InfoPosition(p);
 					currentPartial.addInfoPosition(i);
+				//Tutte le iterazioni successive	
 				}else{
+					
+					//Aggiorno la mappa degli userMode dentro al partial
+					if(p.getUserMode()!=null)
+						currentPartial.addMode(p.getUserMode());
+					
+					//La posizione ha un beaconId associato
 					if(p.getBeaconId()!=null && !p.getBeaconId().isEmpty()){
+						//Se il partial ha lo stesso beaconId, aggiungo la posizione al partial
 						if(currentPartial.getBeaconId().equals(p.getBeaconId())){
 							InfoPosition i = new InfoPosition(p);
 							currentPartial.addInfoPosition(i);
+						//In caso contrario salvo il partial precdente e new creo uno nuovo.
 						}else{
 							currentPartial.setEnd(currentPartial.getAllPositions().get(currentPartial.getAllPositions().size()-1).getTimestamp());
 							lengthOfPartial(currentPartial);
@@ -296,6 +313,7 @@ public class AppServiceImpl implements AppService{
 							InfoPosition i = new InfoPosition(p);
 							currentPartial.addInfoPosition(i);
 						}
+					//La posizione non ha un beaconId associato mentre il partial sì.
 					}else if((p.getBeaconId()==null || p.getBeaconId().isEmpty()) 
 							&& currentPartial.getBeaconId()!=null && !currentPartial.getBeaconId().isEmpty()){
 						currentPartial.setEnd(currentPartial.getAllPositions().get(currentPartial.getAllPositions().size()-1).getTimestamp());
@@ -309,7 +327,10 @@ public class AppServiceImpl implements AppService{
 						
 						InfoPosition i = new InfoPosition(p);
 						currentPartial.addInfoPosition(i);
+					//Né la posizione né il partial hanno un beaconId associato --> CASO PIÙ COMUNE
+					//Controllo se la posizione ha associata una posizione di movimento (FOOT, VEHICLE, BYCICLE).
 					}else if(isMovement(p.getMode())){
+						
 						if(!isMovement(currentPartial.getMode())){
 							currentPartial.setMode(p.getMode());
 							InfoPosition i = new InfoPosition(p);
@@ -357,7 +378,11 @@ public class AppServiceImpl implements AppService{
 		
 		for(int i=0;i<partials.size();i++){
 			PartialTravel p = partials.get(i);
-			
+			if(!isMovement(p.getMode())){
+				int userMode = p.getUserMode();
+				if(isMovement(userMode))
+					p.setMode(userMode);
+			}
 			if(!isValidStep(p)){
 				aggregateStep(i, partials);
 			}
@@ -1024,6 +1049,7 @@ public class AppServiceImpl implements AppService{
 					StopInfo s = stopsInfo.get(i);
 					Stop stop = new Stop();
 					stop.setId(s.getBusStopId());
+					stop.setName(s.getBusStopName());
 					if(i==0)
 						stop.setPassengers(s.getNumPassengerGetIn());
 					else

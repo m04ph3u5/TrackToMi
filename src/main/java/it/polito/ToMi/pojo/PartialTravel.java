@@ -2,7 +2,11 @@ package it.polito.ToMi.pojo;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.annotation.Transient;
 
 public class PartialTravel {
 
@@ -18,11 +22,15 @@ public class PartialTravel {
 	//TRUE TOMI, FALSE MITO. E' ridondante come info ma serve per reperire più velocemente la direzione
 	private boolean direction;
 	private Long effectiveTime;
+
+	@Transient
+	private Map<Integer, Integer> userModes; 
 	
 	public PartialTravel(){
 		super();
 		allPositions = new ArrayList<InfoPosition>();
 		busStopsId = new ArrayList<String>();
+		userModes = new HashMap<Integer, Integer>();
 	}
 	
 
@@ -126,5 +134,19 @@ public class PartialTravel {
 	public void setEffectiveTime(Long effectiveTime) {
 		this.effectiveTime = effectiveTime;
 	}
+	public void addMode(Integer userMode){
+		if(userModes.containsKey(userMode))
+			userModes.put(userMode, userModes.get(userMode)+1);
+		else
+			userModes.put(userMode, 1);
+	}
 	
+	public int getUserMode(){
+		int maxMode=0;
+		for(Integer i : userModes.keySet()){
+			if(userModes.get(i)>maxMode)
+				maxMode = userModes.get(i);
+		}
+		return maxMode;
+	}
 }
