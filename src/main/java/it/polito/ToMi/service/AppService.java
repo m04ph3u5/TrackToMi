@@ -5,6 +5,7 @@ import java.util.List;
 import it.polito.ToMi.clustering.UserCluster;
 import it.polito.ToMi.exception.BadRequestException;
 import it.polito.ToMi.exception.NotFoundException;
+import it.polito.ToMi.pojo.Answer;
 import it.polito.ToMi.pojo.Bus;
 import it.polito.ToMi.pojo.BusStop;
 import it.polito.ToMi.pojo.Comment;
@@ -14,41 +15,42 @@ import it.polito.ToMi.pojo.Passenger;
 import it.polito.ToMi.pojo.RunDTO;
 import it.polito.ToMi.pojo.RunDetail;
 import it.polito.ToMi.pojo.TransportTime;
+import it.polito.ToMi.pojo.UserHistory;
 
 public interface AppService {
 
-	public void saveDetectedPosition(List<DetectedPosition> position, Passenger passenger);
+  public void saveDetectedPosition(List<DetectedPosition> position, Passenger passenger);
 
-	public List<DetectedPosition> getMyPositions(String userId, long start, long end);
+  public List<BusStop> getAllBusStop();
 
-	public List<BusStop> getAllBusStop();
+  public List<Bus> getAllBus();
 
-	public List<Bus> getAllBus();
+  public void saveComments(List<Comment> comments, String userId);
 
-	public void saveComments(List<Comment> comments, String userId);
+  public List<Comment> getComments(String lastId);
 
-	public List<Comment> getComments(String lastId);
+  public DailyData getDailyData(String passengerId);
 
-	public DailyData getDailyData(String passengerId);
-	
-	public void saveAnswerToComments(String id, List<Comment> answers, String userId) throws BadRequestException ;
+  public void saveAnswerToComments(String id, List<Answer> answers, String userId) throws BadRequestException ;
 
-	public List<RunDTO> getRuns();
+  public List<RunDTO> getRuns();
 
-	public List<RunDetail> getRunDetails(long timestamp, String passengerId);
+  public List<RunDetail> getRunDetails(long timestamp, String passengerId);
 
-	public Passenger getPassenger(String userEmail) throws NotFoundException;
+  public Passenger getPassenger(String userEmail) throws NotFoundException;
 
-	/**
-	 * @param id
-	 * @return
-	 * @throws NotFoundException 
-	 */
-	public List<TransportTime> getTransportTime(String id) throws NotFoundException;
+  /**
+   * @param id
+   * @return
+   * @throws NotFoundException 
+   */
+  public List<TransportTime> getTransportTime(String id) throws NotFoundException;
 
-	/**
-	 * @param id
-	 * @return
-	 */
-	public List<UserCluster> getUserCluster(String id);
+  /**
+   * @param id
+   * @return
+   */
+  public List<UserCluster> getUserCluster(String id);
+
+  public List<UserHistory> getUserHistory(String id);
 }

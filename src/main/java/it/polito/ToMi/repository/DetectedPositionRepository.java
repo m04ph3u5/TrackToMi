@@ -6,6 +6,4 @@ import it.polito.ToMi.pojo.DetectedPosition;
 
 public interface DetectedPositionRepository extends MongoRepository<DetectedPosition, String>, CustomDetectedPositionRepository{
 
-
-
 }

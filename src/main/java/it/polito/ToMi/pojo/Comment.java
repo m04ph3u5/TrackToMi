@@ -21,19 +21,19 @@ public class Comment {
 	private String time;
 	private String category;
 	
-	private List<Comment> answers;
+	private List<Answer> answers;
 	
-	public void addAnswers(List<Comment> answers){
+	public void addAnswers(List<Answer> answers){
 		if(this.answers!=null)
 			this.answers.addAll(answers);
 		else
 			this.answers = answers;
 	}
 	
-	public List<Comment> getAnswers() {
+	public List<Answer> getAnswers() {
 		return answers;
 	}
-	public void setAnswers(List<Comment> answers) {
+	public void setAnswers(List<Answer> answers) {
 		this.answers = answers;
 	}
 

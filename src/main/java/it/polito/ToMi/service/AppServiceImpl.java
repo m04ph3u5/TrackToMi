@@ -5,8 +5,12 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
@@ -20,6 +24,7 @@ import org.springframework.stereotype.Service;
 import it.polito.ToMi.clustering.UserCluster;
 import it.polito.ToMi.exception.BadRequestException;
 import it.polito.ToMi.exception.NotFoundException;
+import it.polito.ToMi.pojo.Answer;
 import it.polito.ToMi.pojo.Bus;
 import it.polito.ToMi.pojo.BusRunDetector;
 import it.polito.ToMi.pojo.BusStop;
@@ -41,6 +46,7 @@ import it.polito.ToMi.pojo.StopInfo;
 import it.polito.ToMi.pojo.TemporaryTravel;
 import it.polito.ToMi.pojo.TransportTime;
 import it.polito.ToMi.pojo.Travel;
+import it.polito.ToMi.pojo.UserHistory;
 import it.polito.ToMi.repository.BusRepository;
 import it.polito.ToMi.repository.BusStopRepository;
 import it.polito.ToMi.repository.CommentRepository;
@@ -204,19 +210,13 @@ public class AppServiceImpl implements AppService{
 	}
 
 	@Override
-	public List<DetectedPosition> getMyPositions(String userId, long start, long end) {
-		return posRepo.getMyPositions(userId, start, end);
-	}
-
-	@Override
 	public List<BusStop> getAllBusStop() {
 		return busStopRepo.findAll();
 	}
 
 	@Override
 	public List<Bus> getAllBus() {
-		// TODO Auto-generated method stub
-		return null;
+      return busRepo.findAll();
 	}
 	
 
@@ -232,11 +232,11 @@ public class AppServiceImpl implements AppService{
 	}
 	
 	@Override
-	public void saveAnswerToComments(String id, List<Comment> answers, String userId) throws BadRequestException {
+	public void saveAnswerToComments(String id, List<Answer> answers, String userId) throws BadRequestException {
 		Comment father = commentRepo.findById(id);
 		if(father==null)
 			throw new BadRequestException("Commento non trovato!");
-		for(Comment c: answers){
+		for(Answer c: answers){
 			c.setUserId(userId);
 			c.setDate(date.format(c.getTimestamp()));
 			c.setTime(time.format(c.getTimestamp()));
@@ -1147,42 +1147,82 @@ public class AppServiceImpl implements AppService{
 			throw new NotFoundException("User not found");
 		else {
 			List<Travel> travels = travelRepo.findMyTravel(p.getId());
+			
+			
 			//Initialize array that contains 7 object (from Monday to Sunday).
 			//It stores time spent on each transport (vehicle, bicycle, foot) for each day.
 			List<TransportTime> transportTime = new ArrayList<TransportTime>(7);
-			for(int i=0; i<7; i++)
+			Map<Integer,Set<Integer>> countingDaysCar = new HashMap<Integer, Set<Integer>>();
+			Map<Integer,Set<Integer>> countingDaysBicycle = new HashMap<Integer, Set<Integer>>();
+			Map<Integer,Set<Integer>> countingDaysFoot = new HashMap<Integer, Set<Integer>>();
+
+			for(int i=0; i<7; i++){
 				transportTime.add(new TransportTime());
+				countingDaysCar.put(i, new HashSet<Integer>());
+				countingDaysBicycle.put(i, new HashSet<Integer>());
+				countingDaysFoot.put(i, new HashSet<Integer>());
+
+			}
 			if(travels==null)
 				return transportTime;
-			
+						
 			Calendar cal = Calendar.getInstance();
 			
 			for(Travel t : travels){
 				if(t.getPartials()==null)
 					continue;
 				for(PartialTravel pt : t.getPartials()){
+				    if(pt.getEffectiveTime()==null || pt.getEffectiveTime()==0){
+				      continue;
+				    }
+                    long time = (pt.getEnd().getTime()-pt.getStart().getTime())/60000l;
+                    if(time<=0){
+                      if(time<0){
+                        System.out.println("Negative time!!!");
+                      }
+                      continue;
+                    }
+                      
 					cal.setTime(pt.getStart());
 					//Shift in order to have Monday=0 and Sunday=6
-					int i = (cal.get(Calendar.DAY_OF_WEEK)+5)%7;
-					long time = (pt.getEnd().getTime()-pt.getStart().getTime())/60000l;
+					int i = (cal.get(Calendar.DAY_OF_WEEK)+6)%7;
 
 					if(pt.getMode()==IN_VEHICLE || pt.getMode()==ON_BUS){
 						transportTime.get(i).addMinuteToVehicle(time);
-						if(pt.getEffectiveTime()!=null)
-							transportTime.get(i).addMinuteToEffectiveVehicle(pt.getEffectiveTime()/60000l);
+						countingDaysCar.get(i).add(cal.get(Calendar.DAY_OF_YEAR));
+						transportTime.get(i).addMinuteToEffectiveVehicle(pt.getEffectiveTime()/60000l);
 					}
 					if(pt.getMode()==ON_BICYCLE){
 						transportTime.get(i).addMinuteToBicycle(time);
-						if(pt.getEffectiveTime()!=null)
-							transportTime.get(i).addMinuteToEffectiveBicycle(pt.getEffectiveTime()/60000l);
+						countingDaysBicycle.get(i).add(cal.get(Calendar.DAY_OF_YEAR));
+						transportTime.get(i).addMinuteToEffectiveBicycle(pt.getEffectiveTime()/60000l);
 					}
 					if(pt.getMode()==ON_FOOT || pt.getMode()==RUNNING || pt.getMode()==WALKING){
 						transportTime.get(i).addMinuteToFoot(time);
-						if(pt.getEffectiveTime()!=null)
-							transportTime.get(i).addMinuteToEffectiveFoot(pt.getEffectiveTime()/60000l);
+						countingDaysFoot.get(i).add(cal.get(Calendar.DAY_OF_YEAR));
+						transportTime.get(i).addMinuteToEffectiveFoot(pt.getEffectiveTime()/60000l);
 					}
 				}
 
+			}
+			for(int i=0; i<7; i++){
+				TransportTime t = transportTime.get(i);
+				int bicycleDay = countingDaysBicycle.get(i).size();
+				int carDay = countingDaysCar.get(i).size();
+				int footDay = countingDaysFoot.get(i).size();
+				
+				if(footDay!=0){
+					t.setOnFoot(t.getOnFoot()/footDay);
+					t.setOnFootEffective(t.getOnFootEffective()/footDay);
+				}
+				if(carDay!=0){
+					t.setOnVehicle(t.getOnVehicle()/carDay);
+					t.setOnVehicleEffective(t.getOnVehicleEffective()/carDay);
+				}
+				if(bicycleDay!=0){
+					t.setOnBicycle(t.getOnBicycle()/bicycleDay);
+					t.setOnFootEffective(t.getOnBicycleEffective()/bicycleDay);
+				}
 			}
 			return transportTime;
 		}
@@ -1195,5 +1235,22 @@ public class AppServiceImpl implements AppService{
 	public List<UserCluster> getUserCluster(String userId) {
 		return userClusterRepo.findByUserId(userId);
 	}
+
+  @Override
+  public List<UserHistory> getUserHistory(String userId) {
+    List<DetectedPosition> pos = posRepo.findByUserIdWithUserInteractionTrue(userId);
+    if(pos==null || pos.isEmpty()){
+      return Collections.emptyList();
+    }
+    List<UserHistory> uhList = new LinkedList<UserHistory>();
+    for(DetectedPosition p : pos){
+      UserHistory uh = new UserHistory();
+      uh.setUserMode(p.getUserMode());
+      uh.setDate(date.format(p.getTimestamp()));
+      uh.setTime(time.format(p.getTimestamp()));
+      uhList.add(uh);
+    }
+    return uhList;
+  }
 
 }

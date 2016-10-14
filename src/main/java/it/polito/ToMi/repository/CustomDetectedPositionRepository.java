@@ -9,7 +9,6 @@ import it.polito.ToMi.pojo.DetectedPosition;
 
 public interface CustomDetectedPositionRepository {
 
-	public List<DetectedPosition> getMyPositions(String userId, long start, long end);
 	/**
 	 * @param lastUpdate
 	 * @param sort 
@@ -17,4 +16,5 @@ public interface CustomDetectedPositionRepository {
 	 */
 	List<DetectedPosition> findByUserIdAfterDate(String userId, Date lastUpdate, Sort sort);
 	List<DetectedPosition> findByUserId(String userId, Sort sort);
+	List<DetectedPosition> findByUserIdWithUserInteractionTrue(String userId);
 }

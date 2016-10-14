@@ -62,6 +62,7 @@ public class OAuth2Config {
 			// @formatter:off
 			http
 			.authorizeRequests()
+//			.antMatchers("/api/v1/test").permitAll()
 			.antMatchers("/api/v1/subscribe").anonymous()
 			.antMatchers("/api/**").hasRole("USER");
 			// @formatter:on
@@ -106,7 +107,7 @@ public class OAuth2Config {
 			.scopes("read", "write")
 			.resourceIds(RESOURCE_ID)
 			.secret(oauthClientPassword)
-			.accessTokenValiditySeconds(90);
+			.accessTokenValiditySeconds(3600);
 			// @formatter:on
 		}
 
