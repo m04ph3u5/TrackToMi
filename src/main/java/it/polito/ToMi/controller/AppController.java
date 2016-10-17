@@ -134,8 +134,8 @@ public class AppController extends BaseController{
 
   @RequestMapping(value="/v1/comment", method=RequestMethod.GET)
   @ResponseStatus(value = HttpStatus.OK)
-  public List<Comment> getComment(@RequestParam(value = "last", required=false) String lastId) throws NotFoundException {
-    return appService.getComments(lastId);
+  public List<Comment> getComment(@RequestParam(value = "type", required=false) String category, @RequestParam(value = "before", required=false) Long before) throws NotFoundException, BadRequestException {
+    return appService.getComments(category, before);
   }
 
 
@@ -184,7 +184,10 @@ public class AppController extends BaseController{
 
   @RequestMapping(value="/v1/subscribe", method=RequestMethod.POST)
   @ResponseStatus(value = HttpStatus.CREATED)
-  public void subscribe(@RequestBody SubscribeDTO subscribe) throws BadRequestException, ConflictException {
+  public void subscribe(@RequestBody @Valid SubscribeDTO subscribe, BindingResult results) throws BadRequestException, ConflictException {
+    if(results.hasErrors()){
+      throw new BadRequestException("Insert valid username and password");
+    }
     userService.subscribe(subscribe);
   }
   

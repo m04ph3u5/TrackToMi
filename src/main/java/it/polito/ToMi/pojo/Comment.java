@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document
@@ -16,6 +17,7 @@ public class Comment {
 	private String title;
 	private String body;
 	private boolean isToMi;
+	@Indexed
 	private Date timestamp;
 	private String date;
 	private String time;

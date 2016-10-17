@@ -246,12 +246,25 @@ public class AppServiceImpl implements AppService{
 	}
 	
 	@Override
-	public List<Comment> getComments(String lastId) {
-		if(lastId==null || lastId.isEmpty()){
+	public List<Comment> getComments(String category, Long before) throws BadRequestException {
+	    //Nessun parametro, ritorno i 20 commenti più recenti
+		if( (category==null || category.isEmpty()) && (before==null || before==0)){
 			return commentRepo.getLastComments();
-		}else{
-			return commentRepo.getCommentsAfterId(lastId);
+		//category specifica, nessuna data -> ritorno i 20 commenti di quella categoria più recenti	
+		} else if((category!=null && !category.isEmpty()) && (before==null || before==0)){
+		  return commentRepo.getLastCommentsByCategory(category);
+		//data specifica, nessuna categoria -> ritorno i 20 commenti precedenti a quella data in ordine decrescente  
+		} else if((category==null || category.isEmpty()) && (before!=null && before>0)){
+		  Calendar cal = Calendar.getInstance();
+		  cal.setTimeInMillis(before);
+		  return commentRepo.getLastCommentBeforeDate(cal.getTime());
+	    //data e categoria specificata -> ritorno i 20 commenti di quella categoria precedenti alla data specificata in ordine decrescente
+		} else if((category!=null && !category.isEmpty()) && (before!=null && before>0)){
+		  Calendar cal = Calendar.getInstance();
+          cal.setTimeInMillis(before);
+          return commentRepo.getLastCommentByCategoryBeforeDate(cal.getTime(), category);
 		}
+		throw new BadRequestException("Illegal parameters for get comments");
 	}
 
 	private void saveTravel(TemporaryTravel tempTravel) {

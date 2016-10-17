@@ -27,7 +27,7 @@ public interface AppService {
 
   public void saveComments(List<Comment> comments, String userId);
 
-  public List<Comment> getComments(String lastId);
+  public List<Comment> getComments(String type, Long before) throws BadRequestException;
 
   public DailyData getDailyData(String passengerId);
 

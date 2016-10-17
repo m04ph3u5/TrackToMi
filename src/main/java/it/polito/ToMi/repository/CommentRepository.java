@@ -7,4 +7,6 @@ import it.polito.ToMi.pojo.Comment;
 public interface CommentRepository extends MongoRepository<Comment, String>, CustomCommentRepository{
 
 	public Comment findById(String id);
+
+
 }
