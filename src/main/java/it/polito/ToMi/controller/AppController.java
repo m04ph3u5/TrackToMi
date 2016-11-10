@@ -38,6 +38,7 @@ import it.polito.ToMi.pojo.TransportTime;
 import it.polito.ToMi.pojo.User;
 import it.polito.ToMi.pojo.UserHistory;
 import it.polito.ToMi.repository.PassengerRepository;
+import it.polito.ToMi.repository.UsageRankRepository;
 import it.polito.ToMi.service.AppService;
 import it.polito.ToMi.service.UserService;
 
@@ -53,6 +54,9 @@ public class AppController extends BaseController{
 
   @Autowired
   private UserService userService;
+  
+  @Autowired 
+  private UsageRankRepository usageRankRepo;
 
 
   @RequestMapping(value="/v1/dashboard", method=RequestMethod.GET)
@@ -63,8 +67,9 @@ public class AppController extends BaseController{
       throw new NotFoundException("Passenger not found");
 
     DashboardInfo d = new DashboardInfo();
-    d.setHours(p.getServiceTime());
+    d.setMinutes(p.getServiceTime());
     d.setUsers(passRepo.count());
+    d.setLotteryClosed(usageRankRepo.isLotteryClosed());
     return d;
   }
 
@@ -201,6 +206,5 @@ public class AppController extends BaseController{
 
     return appService.getUserHistory(p.getId());
   }
-
 
 }

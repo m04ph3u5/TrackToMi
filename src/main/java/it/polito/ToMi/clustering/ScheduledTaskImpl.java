@@ -71,7 +71,6 @@ public class ScheduledTaskImpl {
 	@Scheduled(cron = "${scheduledTask.cluster.cron}")
 	public void usersClustering() {
 		try {
-			System.out.println("START SCHEDULED TASK");
 			List<Passenger> passengers = passRepo.findAll();
 			for(Passenger p : passengers)
 				if(p.getUserId()!=null)
@@ -81,7 +80,6 @@ public class ScheduledTaskImpl {
 		} catch (RejectedExecutionException | InterruptedException e) {
 			logger.error(e.getMessage());
 		} finally {
-			System.out.println("END SCHEDULED TASK");
 		}
 	}
 
@@ -91,6 +89,7 @@ public class ScheduledTaskImpl {
 			Calendar cal = Calendar.getInstance();
 			cal.setTime(new Date());
 			cal.add(Calendar.HOUR_OF_DAY, -1);
+			cal.add(Calendar.MINUTE, -5);
 			List<Passenger> toUpdate = passRepo.findUpdatable(cal.getTime());
 			if(toUpdate==null || toUpdate.size()==0)
 				return;
@@ -123,7 +122,6 @@ public class ScheduledTaskImpl {
 			logger.info(threadName+ " start update times for user "+userId);
 			List<DetectedPosition> positions = null;
 			Date lastUpdate = passenger.getLastTimeUpdate();	
-			System.out.println(lastUpdate);
 			/*
 			 * Sugli utenti già presenti nel sistema questa data sarà null, quindi la prima volta vado a fare una ricerca 
 			 * su tutte le posizioni salvate per quell'utente, andando poi ad aggiornare questo campo.
@@ -131,11 +129,9 @@ public class ScheduledTaskImpl {
 			 * */
 			if(lastUpdate==null){ 
 				positions = detectedPosRepo.findByUserId(userId, new Sort(Sort.Direction.ASC,"timestamp"));
-				System.out.println("lastUpdate null");
 			}else{
 				positions = detectedPosRepo.findByUserIdAfterDate(userId, lastUpdate, new Sort(Sort.Direction.ASC,"timestamp"));
 			}
-			System.out.println(positions.size());
 			if(positions==null || positions.size()<2){
 				logger.warn(threadName + " update user time failed for " + userId);		
 				return;
@@ -143,7 +139,6 @@ public class ScheduledTaskImpl {
 
 			long minutes = positions.get(positions.size()-1).getTimestamp().getTime() - positions.get(0).getTimestamp().getTime();
 			minutes/=60000l;
-			System.out.println(minutes+" minuti per "+userId);
 			DetectedPosition before = positions.get(0);
 			for(int i=1; i<positions.size(); i++){
 				long interval = positions.get(i).getTimestamp().getTime()-before.getTimestamp().getTime();
@@ -154,12 +149,12 @@ public class ScheduledTaskImpl {
 			}
 			if(lastUpdate==null){
 				if(minutes>0)
-					passenger.setServiceTime((int)minutes/60);
+					passenger.setServiceTime((int)minutes);
 			}else{
 				if(minutes>0)
-					passenger.setServiceTime(passenger.getServiceTime()+(int)(minutes/60));
+					passenger.setServiceTime(passenger.getServiceTime()+(int)(minutes));
 			}
-
+			//TODO represents service time in minute NOT in hours!!!
 			passenger.setLastTimeUpdate(new Date());
 			passRepo.save(passenger);
 			logger.info(threadName+ " update times complete for user "+userId);
@@ -185,11 +180,9 @@ public class ScheduledTaskImpl {
 				logger.warn(threadName+" interrputed. No geofences available for user "+userId);
 				return;
 			}
-			System.out.println(userId+" "+geofences.size());
 
 			DBSCANClusterer<Geofence> dbscan=new DBSCANClusterer<>(userRadius,userMinPoints);
 			List<Cluster<Geofence>> clusters= dbscan.cluster(geofences);
-			System.out.println(clusters.size()+" "+userId);
 			if (clusters==null || clusters.size()<2){
 				logger.warn(threadName+" interrputed. No cluster (<2) available for user "+userId);
 				return;
@@ -218,7 +211,6 @@ public class ScheduledTaskImpl {
 					}
 				}
 			}
-			System.out.println("SAVING");
 
 			userClusterRepo.deleteByUserId(userId);
 			userClusterRepo.save(userClusters);

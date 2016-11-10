@@ -41,7 +41,6 @@ public class InfoPosition {
 		c.setTime(timestamp);
 		int h = c.get(Calendar.HOUR_OF_DAY);
 		int m = c.get(Calendar.MINUTE);
-		System.out.println(h+":"+m);
 		return h*60*60*1000 + m*60*1000;
 	}
 	public int getMode() {

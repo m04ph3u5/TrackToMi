@@ -3,8 +3,7 @@ package it.polito.ToMi.pojo;
 public class UserHistory {
 
   private Integer userMode;
-  private String date;
-  private String time;
+  private long timestamp;
   
   
   public Integer getUserMode() {
@@ -13,18 +12,12 @@ public class UserHistory {
   public void setUserMode(Integer userMode) {
     this.userMode = userMode;
   }
-  public String getDate() {
-    return date;
+  public long getTimestamp() {
+    return timestamp;
   }
-  public void setDate(String date) {
-    this.date = date;
+  public void setTimestamp(long timestamp) {
+    this.timestamp = timestamp;
   }
-  public String getTime() {
-    return time;
-  }
-  public void setTime(String time) {
-    this.time = time;
-  }
-  
+    
   
 }

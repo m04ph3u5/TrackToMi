@@ -436,7 +436,6 @@ public class AppServiceImpl implements AppService{
 	/aggiorna i valori di salite/discese delle specifiche fermate sui cui il passeggero è salito/sceso. */
 	
 	private void saveRun(PartialTravel p, String passengerId, long timestamp, String day){
-		System.out.println(p.getAllPositions().size());
 		List<BusStop> stops = new ArrayList<BusStop>();
 		Bus bus = busRepo.findByBeaconId(p.getBeaconId());
 		String idLine = bus.getIdLine();
@@ -546,8 +545,6 @@ public class AppServiceImpl implements AppService{
 			first = busStopRepo.findNear(firstPosition, idLine).getContent();
 			last = busStopRepo.findNear(lastPosition, idLine).getContent();
 			
-			System.out.println(first+" "+last);
-			
 			//con questo metodo vado a scegliere il più probabile inizio e la più probabile fine del viaggio in bus
 			List<BusStop> firstAndLast = getFirstLastStop(first, last, firstPosition, lastPosition);
 			
@@ -610,8 +607,6 @@ public class AppServiceImpl implements AppService{
 					//BusStop f, BusStop l, double distanceF, double distanceL, long logTimeF, long logTimeL
 					BusRunDetector possible = new BusRunDetector( first.get(i).getContent(), last.get(j).getContent(),
 							first.get(i).getDistance().getValue(), last.get(j).getDistance().getValue(), firstPosition.getHour(), lastPosition.getHour());
-					System.out.println("getValue= "+ last.get(j).getDistance().getValue());
-					System.out.println("getNormalizedValue= "+ last.get(j).getDistance().getNormalizedValue());
 					possible.setFirst(first.get(i).getContent());
 					possible.setLast(last.get(j).getContent());
 					possible.evaluateGoodIndex();
@@ -640,7 +635,6 @@ public class AppServiceImpl implements AppService{
 	
 	private void aggregateStep(int i, List<PartialTravel> partials) {
 		PartialTravel prev = null, next=null, toAggregate=null;
-		System.out.println("AGGREGATION");
 
 		toAggregate = partials.get(i);
 		if(i>0)
@@ -1198,7 +1192,7 @@ public class AppServiceImpl implements AppService{
                       
 					cal.setTime(pt.getStart());
 					//Shift in order to have Monday=0 and Sunday=6
-					int i = (cal.get(Calendar.DAY_OF_WEEK)+6)%7;
+					int i = (cal.get(Calendar.DAY_OF_WEEK)+5)%7;
 
 					if(pt.getMode()==IN_VEHICLE || pt.getMode()==ON_BUS){
 						transportTime.get(i).addMinuteToVehicle(time);
@@ -1259,8 +1253,7 @@ public class AppServiceImpl implements AppService{
     for(DetectedPosition p : pos){
       UserHistory uh = new UserHistory();
       uh.setUserMode(p.getUserMode());
-      uh.setDate(date.format(p.getTimestamp()));
-      uh.setTime(time.format(p.getTimestamp()));
+      uh.setTimestamp(p.getTimestamp().getTime());
       uhList.add(uh);
     }
     return uhList;

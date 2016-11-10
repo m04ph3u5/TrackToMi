@@ -3,10 +3,9 @@
  */
 package it.polito.ToMi;
 
-import javax.annotation.PostConstruct;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -34,17 +33,22 @@ public class OAuth2Config {
 	
 	private static final String RESOURCE_ID = "restservice";
 	
-//	@Value("${oauth.username}")
-	private static String oauthClientCredential="appAndroidTomi";
+	private static String oauthClientCredential;
+    private static String oauthClientPassword;
+//	private static String oauthClientCredential="appAndroidTomi";
+//	private static String oauthClientPassword="df_67h%fb8_h7HFSl_9";
 	
-//	@Value("${oauth.password}")
-	private static String oauthClientPassword="xcc33Ht_123";
-	
-	@PostConstruct
-	public void init(){
-		System.out.println(oauthClientCredential+" "+oauthClientPassword);
-	}
 
+    @Value("${oauth.username}")
+    public void setOauthClientCredential(String username) {
+      oauthClientCredential = username;
+    }
+    
+    @Value("${oauth.password}")
+    public void setOauthClientPassword(String password) {
+      oauthClientPassword = password;
+    }
+	
 	@Configuration
 	@EnableResourceServer
 	protected static class ResourceServerConfiguration extends ResourceServerConfigurerAdapter{
@@ -62,7 +66,7 @@ public class OAuth2Config {
 			// @formatter:off
 			http
 			.authorizeRequests()
-//			.antMatchers("/api/v1/test").permitAll()
+			.antMatchers("/").permitAll()
 			.antMatchers("/api/v1/subscribe").anonymous()
 			.antMatchers("/api/**").hasRole("USER");
 			// @formatter:on
@@ -107,7 +111,7 @@ public class OAuth2Config {
 			.scopes("read", "write")
 			.resourceIds(RESOURCE_ID)
 			.secret(oauthClientPassword)
-			.accessTokenValiditySeconds(3600);
+			.accessTokenValiditySeconds(7200);
 			// @formatter:on
 		}
 
