@@ -31,6 +31,7 @@ import it.polito.ToMi.pojo.DetectedPosition;
 import it.polito.ToMi.pojo.InfoTravel;
 import it.polito.ToMi.pojo.Passenger;
 import it.polito.ToMi.pojo.PassengerProfile;
+import it.polito.ToMi.pojo.PositionPerApp;
 import it.polito.ToMi.pojo.RunDTO;
 import it.polito.ToMi.pojo.RunDetail;
 import it.polito.ToMi.pojo.SubscribeDTO;
@@ -207,4 +208,10 @@ public class AppController extends BaseController{
     return appService.getUserHistory(p.getId());
   }
 
+  @RequestMapping(value="/v1/position", method=RequestMethod.GET)
+  @ResponseStatus(value = HttpStatus.OK)
+  public List<PositionPerApp> getPositions() throws NotFoundException {
+    return appService.getAllPositions();
+
+  }
 }

@@ -4,7 +4,7 @@ public class Position {
 	
 	private double lat;
 	private double lng;
-	private static final int FAKE_VALUE=1000;
+	public static final int FAKE_VALUE=1000;
 	public double getLat() {
 		return lat;
 	}

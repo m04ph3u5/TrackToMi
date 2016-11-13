@@ -12,6 +12,7 @@ import it.polito.ToMi.pojo.Comment;
 import it.polito.ToMi.pojo.DailyData;
 import it.polito.ToMi.pojo.DetectedPosition;
 import it.polito.ToMi.pojo.Passenger;
+import it.polito.ToMi.pojo.PositionPerApp;
 import it.polito.ToMi.pojo.RunDTO;
 import it.polito.ToMi.pojo.RunDetail;
 import it.polito.ToMi.pojo.TransportTime;
@@ -53,4 +54,6 @@ public interface AppService {
   public List<UserCluster> getUserCluster(String id);
 
   public List<UserHistory> getUserHistory(String id);
+
+  public List<PositionPerApp> getAllPositions();
 }

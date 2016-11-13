@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.RejectedExecutionException;
 
+import javax.annotation.PostConstruct;
+
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.logging.log4j.LogManager;
@@ -20,6 +22,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import com.tc.async.api.PostInit;
 
 import it.polito.ToMi.pojo.DetectedPosition;
 import it.polito.ToMi.pojo.Geofence;
@@ -67,7 +71,7 @@ public class ScheduledTaskImpl {
 	private int checkTime;
 
 	private static final Logger logger = LogManager.getRootLogger();
-
+	
 	@Scheduled(cron = "${scheduledTask.cluster.cron}")
 	public void usersClustering() {
 		try {
@@ -176,7 +180,7 @@ public class ScheduledTaskImpl {
 			logger.info(threadName + " beginning work on " + userId);
 
 			List<Geofence> geofences = geofenceRepo.findByUserIdSortedByEnterTimestamp(userId);
-			if(geofences==null){
+			if(geofences==null || geofences.size()==0){
 				logger.warn(threadName+" interrputed. No geofences available for user "+userId);
 				return;
 			}
@@ -188,6 +192,7 @@ public class ScheduledTaskImpl {
 				return;
 			}
 
+			
 			List<UserCluster> userClusters = new ArrayList<UserCluster>();
 			Map<Geofence,Integer> map = new HashMap<Geofence, Integer>();
 			for(int i=0; i<clusters.size(); i++){
@@ -201,7 +206,7 @@ public class ScheduledTaskImpl {
 				List<Geofence> points = uc.getCluster().getPoints();
 				for(Geofence g : points){
 					int i = Collections.binarySearch(geofences, g);
-					if(i<geofences.size()-1){
+					if(i>=0 && i<geofences.size()-1){
 						Geofence next = geofences.get(i+1);
 						Integer idCluster = map.get(next);
 						if(idCluster!=null && idCluster!=uc.getIdNum()){

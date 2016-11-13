@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
@@ -67,6 +68,7 @@ public class OAuth2Config {
 			http
 			.authorizeRequests()
 			.antMatchers("/").permitAll()
+			.antMatchers(HttpMethod.GET, "/api/v1/position").permitAll()
 			.antMatchers("/api/v1/subscribe").anonymous()
 			.antMatchers("/api/**").hasRole("USER");
 			// @formatter:on

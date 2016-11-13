@@ -81,5 +81,13 @@ public class TravelRepositoryImpl implements CustomTravelRepository{
 		return mongoOp.find(q, Travel.class);
 	}
 
+  @Override
+  public List<Travel> findMyTravelAfterDate(String passengerId, Date d) {
+    Query q = new Query();
+    q.addCriteria(Criteria.where("passengerId").is(passengerId)
+        .andOperator(Criteria.where("start").gte(d)));
+    return mongoOp.find(q, Travel.class);
+  }
+
 	
 }

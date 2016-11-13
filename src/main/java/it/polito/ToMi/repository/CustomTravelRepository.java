@@ -17,6 +17,7 @@ public interface CustomTravelRepository {
 	 * @return
 	 */
 	List<Travel> findMyTravel(String id);
+	List<Travel> findMyTravelAfterDate(String passengerId, Date d);
 
 
 }
