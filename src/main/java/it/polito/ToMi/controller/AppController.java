@@ -214,4 +214,10 @@ public class AppController extends BaseController{
     return appService.getAllPositions();
 
   }
+  
+//  @RequestMapping(value="/v1/test", method=RequestMethod.GET)
+//  @ResponseStatus(value = HttpStatus.OK)
+//  public void test(){
+//    appService.testRunPerTravel();
+//  }
 }

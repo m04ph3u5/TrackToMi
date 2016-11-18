@@ -408,7 +408,7 @@ public class AppServiceImpl implements AppService {
 
     for (int i = 0; i < partials.size(); i++) {
       PartialTravel p = partials.get(i);
-      if (!isMovement(p.getMode())) {
+      if (isMovement(p.getMode()) && (p.getBeaconId()==null || p.getBeaconId().isEmpty())) {
         int userMode = p.getUserMode();
         if (isMovement(userMode))
           p.setMode(userMode);
@@ -530,6 +530,7 @@ public class AppServiceImpl implements AppService {
     List<BusStop> stops = new ArrayList<BusStop>();
 
     InfoPosition firstPosition = null, lastPosition = null;
+    List<GeoResult<BusStop>> first = null, last = null;
 
     int i = 0;
     while (i < p.getAllPositions().size()) {
@@ -537,8 +538,13 @@ public class AppServiceImpl implements AppService {
       if (firstPosition.getPosition().getLat() == NOPOSITION) {
         firstPosition = null;
         i++;
-      } else
-        break;
+      } else {
+        first = busStopRepo.findNear(firstPosition, idLine).getContent();
+        if (first != null && first.size() > 0) {
+          break;
+        }
+        i++;
+      }
     }
     i = p.getAllPositions().size() - 1;
     while (i >= 0) {
@@ -546,8 +552,14 @@ public class AppServiceImpl implements AppService {
       if (lastPosition.getPosition().getLat() == NOPOSITION) {
         lastPosition = null;
         i--;
-      } else
-        break;
+      } else {
+        last = busStopRepo.findNear(lastPosition, idLine).getContent();
+        if (last != null && last.size() > 0) {
+          break;
+        }
+        i--;
+      }
+
     }
     // a questo punto fistPosition contiene l'InfoPosition relativa al primo log
     // con una posizione
@@ -559,13 +571,13 @@ public class AppServiceImpl implements AppService {
     // viaggio in bus
     // last conterrà la lista dei BusStop candidati ad essere la fine del
     // viaggio in bus
-    List<GeoResult<BusStop>> first = null, last = null;
     if (firstPosition != null && lastPosition != null && firstPosition != lastPosition
+        && !firstPosition.getTimestamp().equals(lastPosition.getTimestamp()) && first != null && last != null
         && (firstPosition.getPosition().getLat() != lastPosition.getPosition().getLat()
             || firstPosition.getPosition().getLng() != lastPosition.getPosition().getLng())) {
 
-      first = busStopRepo.findNear(firstPosition, idLine).getContent();
-      last = busStopRepo.findNear(lastPosition, idLine).getContent();
+      // first = busStopRepo.findNear(firstPosition, idLine).getContent();
+      // last = busStopRepo.findNear(lastPosition, idLine).getContent();
 
       // con questo metodo vado a scegliere il più probabile inizio e la più
       // probabile fine del viaggio in bus
@@ -583,45 +595,6 @@ public class AppServiceImpl implements AppService {
 
     } else
       return null;
-
-    // if(first!=null && first.size()>0 && last!=null && last.size()>0){
-    // if(first.get(0).getContent().getIdProg()<last.get(0).getContent().getIdProg()
-    // &&
-    // first.get(0).getContent().getIdProg()*last.get(0).getContent().getIdProg()>0){
-    // stops.add(0, first.get(0).getContent());
-    // stops.addAll(busStopRepo.findBetweenFirstAndLast(first.get(0).getContent(),
-    // last.get(0).getContent()));
-    // stops.add(last.get(0).getContent());
-    // }else if(last.size()>1 &&
-    // first.get(0).getContent().getIdProg()<last.get(1).getContent().getIdProg()
-    // &&
-    // first.get(0).getContent().getIdProg()*last.get(1).getContent().getIdProg()>0){
-    // stops.add(0, first.get(0).getContent());
-    // stops.addAll(busStopRepo.findBetweenFirstAndLast(first.get(0).getContent(),
-    // last.get(1).getContent()));
-    // stops.add(last.get(1).getContent());
-    // }else if(first.size()>1 &&
-    // first.get(1).getContent().getIdProg()<last.get(0).getContent().getIdProg()
-    // &&
-    // first.get(1).getContent().getIdProg()*last.get(0).getContent().getIdProg()>0){
-    // stops.add(0, first.get(1).getContent());
-    // stops.addAll(busStopRepo.findBetweenFirstAndLast(first.get(1).getContent(),
-    // last.get(0).getContent()));
-    // stops.add(last.get(0).getContent());
-    // }else if(first.size()>1 && last.size()>1 &&
-    // first.get(1).getContent().getIdProg()<last.get(1).getContent().getIdProg()
-    // &&
-    // first.get(1).getContent().getIdProg()*last.get(1).getContent().getIdProg()>0){
-    // stops.add(0, first.get(1).getContent());
-    // stops.addAll(busStopRepo.findBetweenFirstAndLast(first.get(1).getContent(),
-    // last.get(1).getContent()));
-    // stops.add(last.get(1).getContent());
-    // }
-    //
-    // return stops;
-    // }
-    // else
-    // return null;
   }
 
   private List<BusStop> getFirstLastStop(List<GeoResult<BusStop>> first, List<GeoResult<BusStop>> last,
@@ -1186,7 +1159,7 @@ public class AppServiceImpl implements AppService {
   @Override
   public List<TransportTime> getTransportTime(String userId) throws NotFoundException {
     Passenger p = passRepo.findByUserId(userId);
-    if (p == null){
+    if (p == null) {
       throw new NotFoundException("User not found");
     } else {
       Calendar cal = Calendar.getInstance();
@@ -1216,7 +1189,7 @@ public class AppServiceImpl implements AppService {
         return transportTime;
 
       cal.clear();
-      
+
       for (Travel t : travels) {
         if (t.getPartials() == null)
           continue;
@@ -1306,9 +1279,9 @@ public class AppServiceImpl implements AppService {
   @Override
   public List<PositionPerApp> getAllPositions() {
     List<DetectedPosition> pos = posRepo.findAllNonEmptyPosition();
-    if(pos!=null){
+    if (pos != null) {
       List<PositionPerApp> positions = new ArrayList<PositionPerApp>();
-      for(DetectedPosition p : pos){
+      for (DetectedPosition p : pos) {
         positions.add(new PositionPerApp(p));
       }
       return positions;
@@ -1316,5 +1289,22 @@ public class AppServiceImpl implements AppService {
       return Collections.emptyList();
     }
   }
+
+//  @Override
+//  public void testRunPerTravel() {
+//    // TODO Auto-generated method stub
+//    List<Travel> travels = travelRepo.finaAllBusTravel();
+//    System.out.println(travels.size());
+//    for (Travel travel : travels) {
+//      for (PartialTravel p : travel.getPartials()) {
+//        if (p.getBusStopsId() == null || p.getBusStopsId().size() > 0) {
+//          break;
+//        }
+//        if (p.getBeaconId() != null && !p.getBeaconId().isEmpty()) {
+//          saveRun(p, travel.getPassengerId(), travel.getDayTimestamp(), date.format(travel.getStart()));
+//        }
+//      }
+//    }
+//  }
 
 }

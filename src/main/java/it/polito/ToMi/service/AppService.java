@@ -56,4 +56,6 @@ public interface AppService {
   public List<UserHistory> getUserHistory(String id);
 
   public List<PositionPerApp> getAllPositions();
+
+//  public void testRunPerTravel();
 }

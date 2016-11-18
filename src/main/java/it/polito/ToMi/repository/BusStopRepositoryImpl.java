@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.geo.Distance;
@@ -23,10 +24,15 @@ public class BusStopRepositoryImpl implements CustomBusStopRepository{
 	@Autowired
 	private MongoOperations mongoOp;
 	
-	private final int SEARCH_RADIUS=1;
+	@Value("${busRecognition.radius}")
+	private double SEARCH_RADIUS=3;
 //	private final int MAX_NUM_RESULTS=2;
-	private final int TWO_MINUTES = 120000;
-	private final int ONE_HOUR = 3600000;
+	@Value("${busRecognition.time.before}")
+	private long TIME_BEOFRE;
+	@Value("${busRecognition.time.after}")
+    private long TIME_AFTER;
+//	private final int FIVE_MINUTE = 120000;
+//	private final int ONE_HOUR = 3600000;
 	
 	@Override
 	public GeoResults<BusStop> findNear(InfoPosition infoPosition, String idLine) {
@@ -38,8 +44,8 @@ public class BusStopRepositoryImpl implements CustomBusStopRepository{
 		long pTime = infoPosition.getHour();
 		Query q = new Query();
 		q.addCriteria(Criteria.where("idLine").is(idLine)
-				.andOperator(Criteria.where("time").lt(pTime+TWO_MINUTES)
-				.andOperator(Criteria.where("time").gt(pTime-ONE_HOUR))));
+				.andOperator(Criteria.where("time").lt(pTime+TIME_BEOFRE)
+				.andOperator(Criteria.where("time").gt(pTime-TIME_AFTER))));
 		
 		nq.query(q);
 		
