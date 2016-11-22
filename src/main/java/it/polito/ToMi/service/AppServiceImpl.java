@@ -47,7 +47,9 @@ import it.polito.ToMi.pojo.StopInfo;
 import it.polito.ToMi.pojo.TemporaryTravel;
 import it.polito.ToMi.pojo.TransportTime;
 import it.polito.ToMi.pojo.Travel;
+import it.polito.ToMi.pojo.UsageRank;
 import it.polito.ToMi.pojo.UserHistory;
+import it.polito.ToMi.pojo.WinnerCode;
 import it.polito.ToMi.repository.BusRepository;
 import it.polito.ToMi.repository.BusStopRepository;
 import it.polito.ToMi.repository.CommentRepository;
@@ -57,6 +59,7 @@ import it.polito.ToMi.repository.PassengerRepository;
 import it.polito.ToMi.repository.RunRepository;
 import it.polito.ToMi.repository.TemporaryTravelRepository;
 import it.polito.ToMi.repository.TravelRepository;
+import it.polito.ToMi.repository.UsageRankRepository;
 import it.polito.ToMi.repository.UserClusterRepository;
 
 @Service
@@ -91,6 +94,9 @@ public class AppServiceImpl implements AppService {
 
   @Autowired
   private UserClusterRepository userClusterRepo;
+  
+  @Autowired
+  private UsageRankRepository usageRankRepo;
 
   public static final int IN_VEHICLE = 0;
   public static final int ON_BICYCLE = 1;
@@ -1288,6 +1294,31 @@ public class AppServiceImpl implements AppService {
     } else {
       return Collections.emptyList();
     }
+  }
+
+  @Override
+  public WinnerCode amIWinner(Passenger p) throws NotFoundException {
+    boolean closed = usageRankRepo.isLotteryClosed();
+    if(!closed){
+      List<UsageRank> rank = usageRankRepo.findTop();
+      for(UsageRank r : rank){
+        if(r.getPassengerId().equals(p.getId())){
+          return new WinnerCode(r.getCode());
+        }
+      }
+    }
+    throw new NotFoundException();
+  }
+
+  @Override
+  public void acceptWin(Passenger p, WinnerCode wc) {
+    UsageRank ur = usageRankRepo.findByPassengerId(p.getDeviceId());
+    if(wc.isUsed()){
+      ur.setAccepted(true);
+    } else {
+      ur.setRefused(true);
+    }
+    usageRankRepo.save(ur);
   }
 
 //  @Override

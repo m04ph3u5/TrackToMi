@@ -33,7 +33,7 @@ public class UsageRankRepositoryImpl implements CustomUsageRankRepository{
     Query q = new Query();
     q.addCriteria(Criteria.where("accepted").is(true));
     q.with(new Sort(Sort.Direction.ASC,"timestamp"));
-    q.limit(20);
+    q.limit(lotteryWinners);
     List<UsageRank> list =  mongoOp.find(q, UsageRank.class);
     if(list!=null && list.size()==lotteryWinners){
       return true;

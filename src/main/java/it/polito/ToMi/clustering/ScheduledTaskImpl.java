@@ -11,8 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.RejectedExecutionException;
 
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.logging.log4j.LogManager;
@@ -23,16 +21,18 @@ import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.tc.async.api.PostInit;
-
 import it.polito.ToMi.pojo.DetectedPosition;
 import it.polito.ToMi.pojo.Geofence;
 import it.polito.ToMi.pojo.Passenger;
+import it.polito.ToMi.pojo.UsageRank;
+import it.polito.ToMi.pojo.WinnerCode;
 import it.polito.ToMi.repository.DetectedPositionRepository;
 import it.polito.ToMi.repository.GeofenceRepository;
 import it.polito.ToMi.repository.GlobalClusterRepository;
 import it.polito.ToMi.repository.PassengerRepository;
+import it.polito.ToMi.repository.UsageRankRepository;
 import it.polito.ToMi.repository.UserClusterRepository;
+import it.polito.ToMi.repository.WinnerCodeRepository;
 
 @Component
 public class ScheduledTaskImpl {
@@ -51,6 +51,12 @@ public class ScheduledTaskImpl {
 
 	@Autowired
 	private DetectedPositionRepository detectedPosRepo;
+	
+	@Autowired
+	private UsageRankRepository usageRankRepo;
+	
+	@Autowired
+	private WinnerCodeRepository winnerCodeRepo;
 
 	@Autowired
 	private BlockingExecutor executor;
@@ -69,6 +75,9 @@ public class ScheduledTaskImpl {
 
 	@Value("${app.checkTime}")
 	private int checkTime;
+	
+	@Value("${lottery.minutes}")
+	private int winTime;
 
 	private static final Logger logger = LogManager.getRootLogger();
 	
@@ -158,9 +167,21 @@ public class ScheduledTaskImpl {
 				if(minutes>0)
 					passenger.setServiceTime(passenger.getServiceTime()+(int)(minutes));
 			}
-			//TODO represents service time in minute NOT in hours!!!
 			passenger.setLastTimeUpdate(new Date());
 			passRepo.save(passenger);
+			if(passenger.getMinutes()>=winTime){
+			  UsageRank ur = usageRankRepo.findByPassengerId(passenger.getId());
+			  if(ur==null){
+			    ur = new UsageRank();
+			    ur.setPassengerId(passenger.getId());
+			    ur.setTimestamp(new Date());
+			    WinnerCode wc = winnerCodeRepo.getNotUsedCode();
+			    if(wc!=null){
+			      ur.setCode(wc.getCode());
+			    }
+			    usageRankRepo.save(ur);
+			  }
+			}
 			logger.info(threadName+ " update times complete for user "+userId);
 		}
 	}

@@ -38,6 +38,7 @@ import it.polito.ToMi.pojo.SubscribeDTO;
 import it.polito.ToMi.pojo.TransportTime;
 import it.polito.ToMi.pojo.User;
 import it.polito.ToMi.pojo.UserHistory;
+import it.polito.ToMi.pojo.WinnerCode;
 import it.polito.ToMi.repository.PassengerRepository;
 import it.polito.ToMi.repository.UsageRankRepository;
 import it.polito.ToMi.service.AppService;
@@ -206,6 +207,27 @@ public class AppController extends BaseController{
 
 
     return appService.getUserHistory(p.getId());
+  }
+  
+  @RequestMapping(value="/v1/winner", method=RequestMethod.GET)
+  @ResponseStatus(value = HttpStatus.OK)
+  public WinnerCode amIWinner(@AuthenticationPrincipal User u) throws NotFoundException {
+    Passenger p = passRepo.findByUserId(u.getId());
+    if(p==null)
+      throw new NotFoundException("User not found");
+
+    return appService.amIWinner(p);
+
+  }
+  
+  @RequestMapping(value="/v1/winner", method=RequestMethod.PUT)
+  @ResponseStatus(value = HttpStatus.OK)
+  public void acceptWin(@RequestBody WinnerCode wc, @AuthenticationPrincipal User u) throws NotFoundException {
+    Passenger p = passRepo.findByUserId(u.getId());
+    if(p==null)
+      throw new NotFoundException("User not found");
+
+    appService.acceptWin(p, wc);
   }
 
   @RequestMapping(value="/v1/position", method=RequestMethod.GET)

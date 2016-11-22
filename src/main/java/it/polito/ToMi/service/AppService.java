@@ -17,6 +17,7 @@ import it.polito.ToMi.pojo.RunDTO;
 import it.polito.ToMi.pojo.RunDetail;
 import it.polito.ToMi.pojo.TransportTime;
 import it.polito.ToMi.pojo.UserHistory;
+import it.polito.ToMi.pojo.WinnerCode;
 
 public interface AppService {
 
@@ -56,6 +57,10 @@ public interface AppService {
   public List<UserHistory> getUserHistory(String id);
 
   public List<PositionPerApp> getAllPositions();
+
+  public WinnerCode amIWinner(Passenger p) throws NotFoundException;
+
+  public void acceptWin(Passenger p, WinnerCode wc);
 
 //  public void testRunPerTravel();
 }
