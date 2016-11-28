@@ -8,8 +8,10 @@ import it.polito.ToMi.exception.NotFoundException;
 import it.polito.ToMi.pojo.Answer;
 import it.polito.ToMi.pojo.Bus;
 import it.polito.ToMi.pojo.BusStop;
+import it.polito.ToMi.pojo.ClusterViews;
 import it.polito.ToMi.pojo.Comment;
 import it.polito.ToMi.pojo.DailyData;
+import it.polito.ToMi.pojo.DataUserCluster;
 import it.polito.ToMi.pojo.DetectedPosition;
 import it.polito.ToMi.pojo.Passenger;
 import it.polito.ToMi.pojo.PositionPerApp;
@@ -37,7 +39,7 @@ public interface AppService {
 
   public List<RunDTO> getRuns();
 
-  public List<RunDetail> getRunDetails(long timestamp, String passengerId);
+  public List<RunDetail> getRunDetails(long timestamp, boolean direction, String passengerId);
 
   public Passenger getPassenger(String userEmail) throws NotFoundException;
 
@@ -60,7 +62,9 @@ public interface AppService {
 
   public WinnerCode amIWinner(Passenger p) throws NotFoundException;
 
-  public void acceptWin(Passenger p, WinnerCode wc);
+  public void acceptWin(Passenger p, WinnerCode wc) throws BadRequestException;
+
+  public List<ClusterViews> getAllCluster();
 
 //  public void testRunPerTravel();
 }

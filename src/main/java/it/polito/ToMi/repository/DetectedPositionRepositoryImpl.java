@@ -60,9 +60,10 @@ public class DetectedPositionRepositoryImpl implements CustomDetectedPositionRep
   }
 
   @Override
-  public List<DetectedPosition> findAllNonEmptyPosition() {
+  public List<DetectedPosition> findAllNonEmptyPosition(Date since) {
     Query q = new Query();
-    q.addCriteria(Criteria.where("position.lat").ne(Position.FAKE_VALUE));
+    q.addCriteria(Criteria.where("position.lat").ne(Position.FAKE_VALUE)
+        .andOperator(Criteria.where("timestamp").gte(since)));
     return mongoOp.find(q, DetectedPosition.class);
   }
 

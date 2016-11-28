@@ -169,7 +169,7 @@ public class ScheduledTaskImpl {
 			}
 			passenger.setLastTimeUpdate(new Date());
 			passRepo.save(passenger);
-			if(passenger.getMinutes()>=winTime){
+			if(passenger.getServiceTime()>=winTime){
 			  UsageRank ur = usageRankRepo.findByPassengerId(passenger.getId());
 			  if(ur==null){
 			    ur = new UsageRank();

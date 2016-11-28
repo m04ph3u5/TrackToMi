@@ -28,9 +28,11 @@ import it.polito.ToMi.pojo.Answer;
 import it.polito.ToMi.pojo.Bus;
 import it.polito.ToMi.pojo.BusRunDetector;
 import it.polito.ToMi.pojo.BusStop;
+import it.polito.ToMi.pojo.ClusterViews;
 import it.polito.ToMi.pojo.Comment;
 import it.polito.ToMi.pojo.DailyData;
 import it.polito.ToMi.pojo.DailyInfo;
+import it.polito.ToMi.pojo.DataUserCluster;
 import it.polito.ToMi.pojo.DayPassengerBusRun;
 import it.polito.ToMi.pojo.DetectedPosition;
 import it.polito.ToMi.pojo.Geofence;
@@ -414,7 +416,7 @@ public class AppServiceImpl implements AppService {
 
     for (int i = 0; i < partials.size(); i++) {
       PartialTravel p = partials.get(i);
-      if (isMovement(p.getMode()) && (p.getBeaconId()==null || p.getBeaconId().isEmpty())) {
+      if (!isMovement(p.getMode())) {
         int userMode = p.getUserMode();
         if (isMovement(userMode))
           p.setMode(userMode);
@@ -1028,7 +1030,7 @@ public class AppServiceImpl implements AppService {
   }
 
   @Override
-  public List<RunDetail> getRunDetails(long timestamp, String passengerId) {
+  public List<RunDetail> getRunDetails(long timestamp, boolean direction, String passengerId) {
     Date d = new Date(timestamp);
     Calendar cal = Calendar.getInstance();
     cal.setTime(d);
@@ -1036,7 +1038,7 @@ public class AppServiceImpl implements AppService {
     cal.set(Calendar.MINUTE, 0);
     cal.set(Calendar.SECOND, 0);
     cal.set(Calendar.MILLISECOND, 0);
-    List<Run> runs = runRepo.findByTimestamp(cal.getTime().getTime());
+    List<Run> runs = runRepo.findByTimestampAndDirection(cal.getTime().getTime(), direction);
 
     if (runs != null) {
       Date start, end;
@@ -1143,9 +1145,9 @@ public class AppServiceImpl implements AppService {
               runs++;
               int startM = 0, endM = 0;
               cal.setTime(pt.getStart());
-              startM = cal.get(Calendar.MINUTE) + cal.get(Calendar.HOUR) * 60;
+              startM = cal.get(Calendar.MINUTE) + cal.get(Calendar.HOUR_OF_DAY) * 60;
               cal.setTime(pt.getEnd());
-              endM = cal.get(Calendar.MINUTE) + cal.get(Calendar.HOUR) * 60;
+              endM = cal.get(Calendar.MINUTE) + cal.get(Calendar.HOUR_OF_DAY) * 60;
               minutes += (endM - startM);
             }
           }
@@ -1170,7 +1172,7 @@ public class AppServiceImpl implements AppService {
     } else {
       Calendar cal = Calendar.getInstance();
       cal.add(Calendar.DAY_OF_MONTH, -6);
-      cal.set(Calendar.HOUR, 0);
+      cal.set(Calendar.HOUR_OF_DAY, 0);
       cal.set(Calendar.MINUTE, 0);
       cal.set(Calendar.SECOND, 0);
       cal.set(Calendar.MILLISECOND, 0);
@@ -1284,7 +1286,9 @@ public class AppServiceImpl implements AppService {
 
   @Override
   public List<PositionPerApp> getAllPositions() {
-    List<DetectedPosition> pos = posRepo.findAllNonEmptyPosition();
+    Calendar cal = Calendar.getInstance();
+    cal.add(Calendar.DAY_OF_MONTH, -60);
+    List<DetectedPosition> pos = posRepo.findAllNonEmptyPosition(cal.getTime());
     if (pos != null) {
       List<PositionPerApp> positions = new ArrayList<PositionPerApp>();
       for (DetectedPosition p : pos) {
@@ -1311,14 +1315,41 @@ public class AppServiceImpl implements AppService {
   }
 
   @Override
-  public void acceptWin(Passenger p, WinnerCode wc) {
-    UsageRank ur = usageRankRepo.findByPassengerId(p.getDeviceId());
+  public void acceptWin(Passenger p, WinnerCode wc) throws BadRequestException {
+    UsageRank ur = usageRankRepo.findByPassengerId(p.getId());
+    if(ur==null){
+      throw new BadRequestException();
+    }
     if(wc.isUsed()){
       ur.setAccepted(true);
     } else {
       ur.setRefused(true);
     }
     usageRankRepo.save(ur);
+  }
+
+  @Override
+  public List<ClusterViews> getAllCluster() {
+   Map<String, List<DataUserCluster>> map = new HashMap<String, List<DataUserCluster>>();
+   List<UserCluster> ucList = userClusterRepo.findAll();
+   for(UserCluster uc : ucList){
+     if(map.containsKey(uc.getUserId())){
+       map.get(uc.getUserId()).add(new DataUserCluster(uc));
+     } else {
+       List<DataUserCluster> list = new LinkedList<DataUserCluster>();
+       list.add(new DataUserCluster(uc));
+       map.put(uc.getUserId(), list);
+     }
+   }
+   
+   List<ClusterViews> response = new LinkedList<ClusterViews>();
+   for(String s : map.keySet()){
+     ClusterViews cv = new ClusterViews();
+     cv.setUserId(s);
+     cv.setUserClusters(map.get(s));
+     response.add(cv);
+   }
+   return response;
   }
 
 //  @Override

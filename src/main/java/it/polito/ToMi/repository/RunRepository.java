@@ -10,6 +10,6 @@ public interface RunRepository extends MongoRepository<Run, String>, CustomRunRe
 
 	public Run findByIdRunAndIdLineAndDay(String idRun, String idLine, String day);
 
-	public List<Run> findByTimestamp(long time);
+	public List<Run> findByTimestampAndDirection(long time, boolean direction);
 
 }

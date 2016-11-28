@@ -5,9 +5,11 @@ import java.util.List;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,11 +26,13 @@ import it.polito.ToMi.exception.NotFoundException;
 import it.polito.ToMi.pojo.Answer;
 import it.polito.ToMi.pojo.Bus;
 import it.polito.ToMi.pojo.BusStop;
+import it.polito.ToMi.pojo.ClusterViews;
 import it.polito.ToMi.pojo.Comment;
 import it.polito.ToMi.pojo.DailyData;
 import it.polito.ToMi.pojo.DashboardInfo;
 import it.polito.ToMi.pojo.DetectedPosition;
 import it.polito.ToMi.pojo.InfoTravel;
+import it.polito.ToMi.pojo.InitValue;
 import it.polito.ToMi.pojo.Passenger;
 import it.polito.ToMi.pojo.PassengerProfile;
 import it.polito.ToMi.pojo.PositionPerApp;
@@ -60,6 +64,11 @@ public class AppController extends BaseController{
   @Autowired 
   private UsageRankRepository usageRankRepo;
 
+  @Value("${init.noise.radius}")
+  private int NOISE_RADIUS;
+  
+  @Value("${init.quote}")
+  private String QUOTE;
 
   @RequestMapping(value="/v1/dashboard", method=RequestMethod.GET)
   @ResponseStatus(value = HttpStatus.OK)
@@ -165,9 +174,10 @@ public class AppController extends BaseController{
   }
 
 
+  /*direction parameter = true -> TOMI, false -> MITO*/
   @RequestMapping(value="/v1/runDetails", method=RequestMethod.GET)
   @ResponseStatus(value = HttpStatus.OK)
-  public List<RunDetail> getRunDetails(@RequestParam(required=true, value="day") long timestamp, @AuthenticationPrincipal User u) throws NotFoundException, BadRequestException {
+  public List<RunDetail> getRunDetails(@RequestParam(required=true, value="day") long timestamp, @RequestParam(required=false, value="direction") boolean direction, @AuthenticationPrincipal User u) throws NotFoundException, BadRequestException {
     Passenger p = passRepo.findByUserId(u.getId());
     if(p==null)
       throw new NotFoundException("User not found");
@@ -175,7 +185,7 @@ public class AppController extends BaseController{
     if(timestamp==0)
       throw new BadRequestException("Give valide date");
 
-    return appService.getRunDetails(timestamp, p.getId());
+    return appService.getRunDetails(timestamp, direction, p.getId());
   }
 
   @RequestMapping(value="/v1/cluster", method=RequestMethod.GET)
@@ -222,7 +232,7 @@ public class AppController extends BaseController{
   
   @RequestMapping(value="/v1/winner", method=RequestMethod.PUT)
   @ResponseStatus(value = HttpStatus.OK)
-  public void acceptWin(@RequestBody WinnerCode wc, @AuthenticationPrincipal User u) throws NotFoundException {
+  public void acceptWin(@RequestBody WinnerCode wc, @AuthenticationPrincipal User u) throws NotFoundException, BadRequestException {
     Passenger p = passRepo.findByUserId(u.getId());
     if(p==null)
       throw new NotFoundException("User not found");
@@ -230,13 +240,32 @@ public class AppController extends BaseController{
     appService.acceptWin(p, wc);
   }
 
-  @RequestMapping(value="/v1/position", method=RequestMethod.GET)
+  @CrossOrigin
+  @RequestMapping(value="/v1/data/position", method=RequestMethod.GET)
   @ResponseStatus(value = HttpStatus.OK)
-  public List<PositionPerApp> getPositions() throws NotFoundException {
+  public List<PositionPerApp> getPositions() {
+    System.out.println("POS");
     return appService.getAllPositions();
 
   }
   
+  @CrossOrigin
+  @RequestMapping(value="/v1/data/cluster", method=RequestMethod.GET)
+  @ResponseStatus(value = HttpStatus.OK)
+  public List<ClusterViews> getDataCluster() {
+    System.out.println("CLUSTER");
+    return appService.getAllCluster();
+
+  }
+  
+  @RequestMapping(value="/v1/data/init", method=RequestMethod.GET)
+  @ResponseStatus(value = HttpStatus.OK)
+  public InitValue getInitValue() {
+    InitValue iv = new InitValue();
+    iv.setNoiseRadius(NOISE_RADIUS);
+    iv.setQuote(QUOTE);
+    return iv;
+  }
 //  @RequestMapping(value="/v1/test", method=RequestMethod.GET)
 //  @ResponseStatus(value = HttpStatus.OK)
 //  public void test(){

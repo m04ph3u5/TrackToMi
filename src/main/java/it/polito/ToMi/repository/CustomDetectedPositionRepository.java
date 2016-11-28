@@ -17,5 +17,5 @@ public interface CustomDetectedPositionRepository {
 	List<DetectedPosition> findByUserIdAfterDate(String userId, Date lastUpdate, Sort sort);
 	List<DetectedPosition> findByUserId(String userId, Sort sort);
 	List<DetectedPosition> findByUserIdWithUserInteractionTrue(String userId);
-	List<DetectedPosition> findAllNonEmptyPosition();
+	List<DetectedPosition> findAllNonEmptyPosition(Date since);
 }
