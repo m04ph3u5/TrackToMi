@@ -34,21 +34,21 @@ public class OAuth2Config {
 	
 	private static final String RESOURCE_ID = "restservice";
 	
-	private static String oauthClientCredential;
-    private static String oauthClientPassword;
-//	private static String oauthClientCredential="appAndroidTomi";
-//	private static String oauthClientPassword="df_67h%fb8_h7HFSl_9";
-	
+//	private static String oauthClientCredential;
+//    private static String oauthClientPassword;
+	private static String oauthClientCredential="appAndroidTomi";
+	private static String oauthClientPassword="df_67h%fb8_h7HFSl_9";
+//	
 
-    @Value("${oauth.username}")
-    public void setOauthClientCredential(String username) {
-      oauthClientCredential = username;
-    }
-    
-    @Value("${oauth.password}")
-    public void setOauthClientPassword(String password) {
-      oauthClientPassword = password;
-    }
+//    @Value("${oauth.username}")
+//    public void setOauthClientCredential(String username) {
+//      oauthClientCredential = username;
+//    }
+//    
+//    @Value("${oauth.password}")
+//    public void setOauthClientPassword(String password) {
+//      oauthClientPassword = password;
+//    }
 	
 	@Configuration
 	@EnableResourceServer

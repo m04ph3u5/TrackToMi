@@ -15,6 +15,7 @@ import java.util.Set;
 import javax.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.geo.GeoResult;
@@ -501,7 +502,7 @@ public class AppServiceImpl implements AppService {
         }
         try {
           runRepo.insert(run);
-        } catch (MongoDataIntegrityViolationException e) {
+        } catch (MongoDataIntegrityViolationException | DuplicateKeyException e) {
           runRepo.updateRun(p.getIdRun(), idLine, day, stops.get(0), stops.get(stops.size() - 1));
         }
       } else {

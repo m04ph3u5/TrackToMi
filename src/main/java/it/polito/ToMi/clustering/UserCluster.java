@@ -16,9 +16,9 @@ import it.polito.ToMi.pojo.Geofence;
 @Document
 public class UserCluster implements Clusterable{
 	
-//	private final static double LAT_SCALE = 110574d;
-//	private final static double LNG_SCALE = 111320d;
-//	private final static int NOISE_RADIUS = 100;
+	private final static double LAT_SCALE = 110574d;
+	private final static double LNG_SCALE = 111320d;
+	private final static int NOISE_RADIUS = 100;
 	
 
 	@Id
@@ -136,37 +136,37 @@ public class UserCluster implements Clusterable{
 			}
 			lat/=points.size();
 			lng/=points.size();
-//			centroid = addNoise(lat,lng);
-			centroid = new double[2];
-            centroid[0] = lat;
-            centroid[1] = lng;
+			centroid = addNoise(lat,lng);
+//			centroid = new double[2];
+//            centroid[0] = lat;
+//            centroid[1] = lng;
 		}
 	}
 
-//	/**
-//	 * @param lat
-//	 * @param lng
-//	 * @return
-//	 */
-//	private double[] addNoise(double lat, double lng) {
-//		
-//		double latMeter = lat*LAT_SCALE;
-//		double lngMeter = lng*LNG_SCALE * Math.cos((lat*Math.PI)/180);
-//		
-//		double noise = SimplexNoise.noise(latMeter, lngMeter);
-//		
-//		//radius approximation in degree
-//		double radiusDegree=NOISE_RADIUS/LNG_SCALE;
-//		double w = radiusDegree * Math.sqrt(Math.abs(noise));
-//		double t = 2*Math.PI*noise;
-//		
-//		double x = w * Math.cos(t);
-//		double y = w * Math.sin(t);
-//		
-//		double[] pos = new double[2];
-//		pos[0]=x+lat;
-//		pos[1]=y+lng;
-//		return pos;
-//	}
+	/**
+	 * @param lat
+	 * @param lng
+	 * @return
+	 */
+	private double[] addNoise(double lat, double lng) {
+		
+		double latMeter = lat*LAT_SCALE;
+		double lngMeter = lng*LNG_SCALE * Math.cos((lat*Math.PI)/180);
+		
+		double noise = SimplexNoise.noise(latMeter, lngMeter);
+		
+		//radius approximation in degree
+		double radiusDegree=NOISE_RADIUS/LNG_SCALE;
+		double w = radiusDegree * Math.sqrt(Math.abs(noise));
+		double t = 2*Math.PI*noise;
+		
+		double x = w * Math.cos(t);
+		double y = w * Math.sin(t);
+		
+		double[] pos = new double[2];
+		pos[0]=x+lat;
+		pos[1]=y+lng;
+		return pos;
+	}
 
 }
