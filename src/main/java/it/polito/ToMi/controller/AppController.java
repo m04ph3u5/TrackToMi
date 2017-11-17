@@ -107,6 +107,12 @@ public class AppController extends BaseController{
     return appService.getTransportTime(u.getId());
   }
 
+  @RequestMapping(value="/v1/alftransport", method=RequestMethod.GET)
+  @ResponseStatus(value = HttpStatus.OK)
+  public List<TransportTime> getAlfTransportTime(@AuthenticationPrincipal User u) throws NotFoundException {
+    return appService.getAlfTransportTime(u.getId());
+  }
+
   @RequestMapping(value="/v1/position", method=RequestMethod.POST)
   @ResponseStatus(value = HttpStatus.CREATED)
   public void savePosition(@RequestBody List<DetectedPosition> positions, @AuthenticationPrincipal User u) throws BadRequestException, ForbiddenException {

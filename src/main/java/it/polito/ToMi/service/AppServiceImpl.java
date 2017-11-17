@@ -1,19 +1,14 @@
 package it.polito.ToMi.service;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.annotation.PostConstruct;
 
+import it.polito.ToMi.pojo.*;
+import it.polito.ToMi.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Sort;
@@ -25,48 +20,11 @@ import org.springframework.stereotype.Service;
 import it.polito.ToMi.clustering.UserCluster;
 import it.polito.ToMi.exception.BadRequestException;
 import it.polito.ToMi.exception.NotFoundException;
-import it.polito.ToMi.pojo.Answer;
-import it.polito.ToMi.pojo.Bus;
-import it.polito.ToMi.pojo.BusRunDetector;
-import it.polito.ToMi.pojo.BusStop;
-import it.polito.ToMi.pojo.ClusterViews;
-import it.polito.ToMi.pojo.Comment;
-import it.polito.ToMi.pojo.DailyData;
-import it.polito.ToMi.pojo.DailyInfo;
-import it.polito.ToMi.pojo.DataUserCluster;
-import it.polito.ToMi.pojo.DayPassengerBusRun;
-import it.polito.ToMi.pojo.DetectedPosition;
-import it.polito.ToMi.pojo.Geofence;
-import it.polito.ToMi.pojo.InfoPosition;
-import it.polito.ToMi.pojo.PartialTravel;
-import it.polito.ToMi.pojo.PartialTravelComparatorOnRunId;
-import it.polito.ToMi.pojo.Passenger;
-import it.polito.ToMi.pojo.PositionPerApp;
-import it.polito.ToMi.pojo.Run;
-import it.polito.ToMi.pojo.RunDTO;
-import it.polito.ToMi.pojo.RunDetail;
-import it.polito.ToMi.pojo.Stop;
-import it.polito.ToMi.pojo.StopInfo;
-import it.polito.ToMi.pojo.TemporaryTravel;
-import it.polito.ToMi.pojo.TransportTime;
-import it.polito.ToMi.pojo.Travel;
-import it.polito.ToMi.pojo.UsageRank;
-import it.polito.ToMi.pojo.UserHistory;
-import it.polito.ToMi.pojo.WinnerCode;
-import it.polito.ToMi.repository.BusRepository;
-import it.polito.ToMi.repository.BusStopRepository;
-import it.polito.ToMi.repository.CommentRepository;
-import it.polito.ToMi.repository.DetectedPositionRepository;
-import it.polito.ToMi.repository.GeofenceRepository;
-import it.polito.ToMi.repository.PassengerRepository;
-import it.polito.ToMi.repository.RunRepository;
-import it.polito.ToMi.repository.TemporaryTravelRepository;
-import it.polito.ToMi.repository.TravelRepository;
-import it.polito.ToMi.repository.UsageRankRepository;
-import it.polito.ToMi.repository.UserClusterRepository;
 
 @Service
 public class AppServiceImpl implements AppService {
+
+    private Logger logger = LoggerFactory.getLogger(AppServiceImpl.class);
 
   @Autowired
   private DetectedPositionRepository posRepo;
@@ -100,6 +58,9 @@ public class AppServiceImpl implements AppService {
   
   @Autowired
   private UsageRankRepository usageRankRepo;
+
+  @Autowired
+  private MyTravelRepository myTravelRepo;
 
   public static final int IN_VEHICLE = 0;
   public static final int ON_BICYCLE = 1;
@@ -142,6 +103,8 @@ public class AppServiceImpl implements AppService {
 
   @Override
   public void saveDetectedPosition(List<DetectedPosition> position, Passenger passenger) {
+
+    alfSavePosition(position,passenger);
 
     passenger.setLastPosition(new Date());
     passRepo.save(passenger);
@@ -199,7 +162,264 @@ public class AppServiceImpl implements AppService {
     posRepo.insert(position);
   }
 
-  private void saveGeofence(DetectedPosition last, DetectedPosition p, String userId) {
+  private void alfSavePosition(List<DetectedPosition> position, Passenger passenger) {
+
+    if(passenger == null || position == null || position.size()== 0){ // invalid parameteres
+        return;
+    }
+
+    position.sort(new Comparator<DetectedPosition>() { // sort positions by date
+        @Override
+        public int compare(DetectedPosition o1, DetectedPosition o2) {
+            return o1.getTimestamp().compareTo(o2.getTimestamp());
+        }
+    });
+
+    MyTravel lastTravel = myTravelRepo.findLastByPassenger(passenger.getId());
+
+
+    for(DetectedPosition p : position) {
+
+        MyPartialTravel partialTravel = null;
+
+        if (lastTravel == null) { //first travel
+            lastTravel = newTravel(p,passenger,-1);
+        }
+        else{
+            if(lastTravel.getEnd() != null){
+                lastTravel = newTravel(p,passenger,-1);
+            }
+        }
+
+        lastTravel.setLastUpdate(p.getTimestamp().getTime());
+
+
+        int posMode = p.getMode();
+        if(p.isUserInteraction() && p.getUserMode() != null){ // check if user set the mode
+            posMode = p.getUserMode();
+        }
+
+
+        if(lastTravel.getLastmode() == posMode){ // mode not change, simply add the position to last partial travel
+            if(partialTravel == null){
+                partialTravel= lastTravel.getLastPartialTravel();
+            }
+            if(partialTravel != null) {
+                partialTravel.addPosition(p);
+            }
+        }
+
+        if(lastTravel.getLastmode() != posMode){ // mode changed
+
+            switch (posMode){
+                case ENTER: // enter in geofence
+                    if(lastTravel.getLastmode() == -1) { // first position
+                        lastTravel.setStart(p.getTimestamp());
+                        partialTravel = new MyPartialTravel();
+                        lastTravel.addPartialTravel(partialTravel);
+                        partialTravel.setStartPosition(p);
+                        partialTravel.addPosition(p);
+                        partialTravel.setMode(UNKNOWN);
+
+                    }
+                    Geofence geo = new Geofence();
+                    geo.setEnterTimestamp(p.getTimestamp().getTime());
+                    geo.setPoint(p.getPosition());
+                    if(partialTravel == null){
+                        partialTravel = lastTravel.getLastPartialTravel();
+                    }
+                    if(partialTravel != null) {
+                        partialTravel.addGeofence(geo);
+                    }
+                    break;
+
+                case EXIT: // exit geofence
+                    if(partialTravel == null){
+                        partialTravel = lastTravel.getLastPartialTravel();
+                    }
+                    if(partialTravel != null) {
+                        Geofence geoExit = partialTravel.getLastGeofence();
+                        if (geoExit != null) {
+                            geoExit.setExitTimestamp(p.getTimestamp().getTime());
+                        }
+                    }
+                    finishPartialTravel(lastTravel, p);
+                    lastTravel.setLastmode(posMode);
+                    finishTravel(lastTravel, p);
+                    myTravelRepo.save(lastTravel);
+                    continue;
+
+                case WALKING:
+                case RUNNING:
+                case TILTING:
+                case STILL:
+                case ON_FOOT:
+                    if(lastTravel.getLastmode() == -1){ // first position
+                        lastTravel.setStart(p.getTimestamp());
+                        partialTravel = new MyPartialTravel();
+                        lastTravel.addPartialTravel(partialTravel);
+                        partialTravel.setStartPosition(p);
+                        partialTravel.addPosition(p);
+                        partialTravel.setMode(posMode);
+                        if(p.getMode() == RUNNING || p.getMode() == WALKING || p.getMode() == TILTING){
+                            partialTravel.setMode(ON_FOOT);
+                        }
+                    } else if(lastTravel.getLastmode() == ON_FOOT
+                            || lastTravel.getLastmode() == WALKING
+                            || lastTravel.getLastmode() == TILTING
+                            || lastTravel.getLastmode() == RUNNING
+                            || lastTravel.getLastmode() == STILL){ // simply add the position on partial travel
+                        if(partialTravel == null){
+                            partialTravel = lastTravel.getLastPartialTravel();
+                        }
+                        if(partialTravel != null) {
+                            partialTravel.addPosition(p);
+                            if (partialTravel.getMode() == UNKNOWN) {
+                                partialTravel.setMode(ON_FOOT);
+                            }
+                        }
+                    }
+                    else {
+                        if(lastTravel.getLastmode() == ENTER){
+                            if(partialTravel == null){
+                                partialTravel = lastTravel.getLastPartialTravel();
+                            }
+                            if(partialTravel != null) {
+                                if (partialTravel.getLastGeofence() != null)
+                                    partialTravel.getLastGeofence().setExitTimestamp(p.getTimestamp().getTime());
+                                if (partialTravel.getMode() == UNKNOWN) {
+                                    partialTravel.setMode(ON_FOOT);
+                                }
+                            }
+                        }
+                        finishPartialTravel(lastTravel, p);
+                        newPartialTravel(lastTravel, p);
+                    }
+                    break;
+                case ON_BUS:
+                case ON_BICYCLE:
+                case IN_VEHICLE:
+
+                    if(lastTravel.getLastmode() == -1){ // first position
+                        lastTravel.setStart(p.getTimestamp());
+                        partialTravel = new MyPartialTravel();
+                        lastTravel.addPartialTravel(partialTravel);
+                        partialTravel.setStartPosition(p);
+                        partialTravel.addPosition(p);
+                        partialTravel.setMode(posMode);
+                    }else{
+                        finishPartialTravel(lastTravel, p);
+                        newPartialTravel(lastTravel,p);
+                    }
+                    if(partialTravel == null){
+                        partialTravel = lastTravel.getLastPartialTravel();
+                    }
+                    if(partialTravel != null) {
+                        if (partialTravel.getMode() == UNKNOWN) {
+                            partialTravel.setMode(posMode);
+                        }
+                    }
+                    break;
+                case ONDESTROY:
+                    finishPartialTravel(lastTravel, p);
+                    lastTravel.setLastmode(posMode);
+                    finishTravel(lastTravel,p);
+                    continue;
+
+                case ONCREATE:
+                    if(partialTravel != null){
+                        if(partialTravel.getEndPosition() == null) {
+                            finishPartialTravel(lastTravel, p);
+                        }
+                    }
+                    if(lastTravel.getEnd() == null) {
+                        if(lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty()){
+                            //non fare niente
+                        }else{
+                            finishPartialTravel(lastTravel, p);
+                            finishTravel(lastTravel, p);
+                            lastTravel = newTravel(p,passenger,-1);
+                        }
+                    }
+                    continue;
+
+                case ARRIVED:
+                    finishPartialTravel(lastTravel,p);
+                    if(lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty()){
+                        lastTravel.setLastmode(-1);
+                        myTravelRepo.save(lastTravel);
+                        continue;
+                    }else{
+                        finishTravel(lastTravel,p);
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        lastTravel.setLastmode(posMode);
+        if(lastTravel.getEnd() != null && (lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty())){
+            continue;
+        }
+        myTravelRepo.save(lastTravel);
+    }
+
+  }
+
+    private void newPartialTravel(MyTravel lastTravel, DetectedPosition p) {
+        MyPartialTravel partial = new MyPartialTravel();
+        partial.setStartPosition(p);
+        partial.addPosition(p);
+        partial.setMode(p.getMode());
+        if(p.isUserInteraction()){
+            partial.setMode(p.getUserMode());
+        }
+        if(p.getMode() == RUNNING || p.getMode() == WALKING || p.getMode() == TILTING){
+            partial.setMode(ON_FOOT);
+        }
+        lastTravel.addPartialTravel(partial);
+    }
+
+    private void finishPartialTravel(MyTravel lastTravel, DetectedPosition p) {
+      MyPartialTravel partial = lastTravel.getLastPartialTravel();
+      if(partial == null){
+          logger.warn("partial is null");
+          return;
+      }
+
+      if(partial.getEndPosition() == null){
+          DetectedPosition end = partial.getLastPosition();
+          if(end != null) {
+              partial.setEndPosition(end);
+          }
+      }
+      else{
+          logger.warn("partial travel have end position when try to finish it");
+      }
+
+    }
+
+    private void finishTravel(MyTravel lastTravel, DetectedPosition p) {
+        if(lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty()){
+            return;
+        }
+        lastTravel.setEnd(p.getTimestamp());
+        myTravelRepo.save(lastTravel);
+        lastTravel = null;
+
+    }
+
+    private MyTravel newTravel(DetectedPosition p, Passenger passenger, int mode) {
+        MyTravel lastTravel = new MyTravel();
+        lastTravel.setPassengerId(passenger.getId());
+        lastTravel.setLastmode(mode);
+        lastTravel.setEnd(null);
+        return lastTravel;
+    }
+
+    private void saveGeofence(DetectedPosition last, DetectedPosition p, String userId) {
     // se la distanza tra il punto di fine di un viaggio e quello di inizio del
     // nuovo viaggio è maggiore di 3000 m allora li considero entrambi geofence
     // in caso contrario salvo come geofence soltanto il punto di fine del
@@ -1160,6 +1380,104 @@ public class AppServiceImpl implements AppService {
     }
   }
 
+    @Override
+    public List<TransportTime> getAlfTransportTime(String id) throws NotFoundException {
+
+        Passenger p = passRepo.findByUserId(id);
+        if (p == null) {
+            throw new NotFoundException("User not found");
+        } else {
+            Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.DAY_OF_MONTH, -6);
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            List<MyTravel> travels = myTravelRepo.findMyTravelAfterDate(p.getId(), cal.getTime());
+
+            List<TransportTime> transportTime = new ArrayList<TransportTime>(7);
+            Map<Integer, Set<Integer>> countingDaysCar = new HashMap<Integer, Set<Integer>>();
+            Map<Integer, Set<Integer>> countingDaysBicycle = new HashMap<Integer, Set<Integer>>();
+            Map<Integer, Set<Integer>> countingDaysFoot = new HashMap<Integer, Set<Integer>>();
+
+            for (int i = 0; i < 7; i++) {
+                transportTime.add(new TransportTime());
+                countingDaysCar.put(i, new HashSet<Integer>());
+                countingDaysBicycle.put(i, new HashSet<Integer>());
+                countingDaysFoot.put(i, new HashSet<Integer>());
+
+            }
+            if (travels == null)
+                return transportTime;
+
+            cal.clear();
+
+            for (MyTravel t : travels) {
+
+                if (t.getPartialTravels() == null || t.getPartialTravels().isEmpty()) {
+                    continue;
+                }
+
+                for (MyPartialTravel pt : t.getPartialTravels()) {
+
+                    if(pt.getStartPosition() == null || pt.getEndPosition() == null){
+                        continue;
+                    }
+
+                    long time = (pt.getEndPosition().getTimestamp().getTime() - pt.getStartPosition().getTimestamp().getTime()) / 60000l;
+                    if (time <= 0) {
+                        continue;
+                    }
+
+                    cal.setTime(pt.getStartPosition().getTimestamp());
+                    // Shift in order to have Monday=0 and Sunday=6
+                    int i = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7;
+
+                    if (pt.getMode() == IN_VEHICLE || pt.getMode() == ON_BUS) {
+                        transportTime.get(i).addMinuteToVehicle(time);
+                        countingDaysCar.get(i).add(cal.get(Calendar.DAY_OF_YEAR));
+//                        transportTime.get(i).addMinuteToEffectiveVehicle(pt.getEffectiveTime() / 60000l);
+                    }
+                    if (pt.getMode() == ON_BICYCLE) {
+                        transportTime.get(i).addMinuteToBicycle(time);
+                        countingDaysBicycle.get(i).add(cal.get(Calendar.DAY_OF_YEAR));
+//                        transportTime.get(i).addMinuteToEffectiveBicycle(pt.getEffectiveTime() / 60000l);
+                    }
+                    if (pt.getMode() == ON_FOOT || pt.getMode() == RUNNING || pt.getMode() == WALKING) {
+                        transportTime.get(i).addMinuteToFoot(time);
+                        countingDaysFoot.get(i).add(cal.get(Calendar.DAY_OF_YEAR));
+//                        transportTime.get(i).addMinuteToEffectiveFoot(pt.getEffectiveTime() / 60000l);
+                    }
+
+
+                }
+
+
+            }
+
+            for (int i = 0; i < 7; i++) {
+                TransportTime t = transportTime.get(i);
+                int bicycleDay = countingDaysBicycle.get(i).size();
+                int carDay = countingDaysCar.get(i).size();
+                int footDay = countingDaysFoot.get(i).size();
+
+                if (footDay != 0) {
+                    t.setOnFoot(t.getOnFoot() / footDay);
+                    t.setOnFootEffective(t.getOnFootEffective() / footDay);
+                }
+                if (carDay != 0) {
+                    t.setOnVehicle(t.getOnVehicle() / carDay);
+                    t.setOnVehicleEffective(t.getOnVehicleEffective() / carDay);
+                }
+                if (bicycleDay != 0) {
+                    t.setOnBicycle(t.getOnBicycle() / bicycleDay);
+                    t.setOnFootEffective(t.getOnBicycleEffective() / bicycleDay);
+                }
+            }
+            return transportTime;
+        }
+    }
+
   /*
    * (non-Javadoc)
    * 
@@ -1352,6 +1670,8 @@ public class AppServiceImpl implements AppService {
    }
    return response;
   }
+
+
 
 //  @Override
 //  public void testRunPerTravel() {

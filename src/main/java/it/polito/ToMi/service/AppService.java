@@ -66,5 +66,7 @@ public interface AppService {
 
   public List<ClusterViews> getAllCluster();
 
+  List<TransportTime> getAlfTransportTime(String id) throws NotFoundException;
+
 //  public void testRunPerTravel();
 }
