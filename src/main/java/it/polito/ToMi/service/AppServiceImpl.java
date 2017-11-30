@@ -177,194 +177,199 @@ public class AppServiceImpl implements AppService {
 
     MyTravel lastTravel = myTravelRepo.findLastByPassenger(passenger.getId());
 
+        for (DetectedPosition p : position) {
 
-    for(DetectedPosition p : position) {
+            try {
+            MyPartialTravel partialTravel = null;
 
-        MyPartialTravel partialTravel = null;
-
-        if (lastTravel == null) { //first travel
-            lastTravel = newTravel(p,passenger,-1);
-        }
-        else{
-            if(lastTravel.getEnd() != null){
-                lastTravel = newTravel(p,passenger,-1);
+            if (lastTravel == null) { //first travel
+                lastTravel = newTravel(p, passenger, -1);
+            } else {
+                if (lastTravel.getEnd() != null) {
+                    lastTravel = newTravel(p, passenger, -1);
+                }
             }
-        }
 
-        lastTravel.setLastUpdate(p.getTimestamp().getTime());
-
-
-        int posMode = p.getMode();
-        if(p.isUserInteraction() && p.getUserMode() != null){ // check if user set the mode
-            posMode = p.getUserMode();
-        }
+            lastTravel.setLastUpdate(p.getTimestamp().getTime());
 
 
-        if(lastTravel.getLastmode() == posMode){ // mode not change, simply add the position to last partial travel
-            if(partialTravel == null){
-                partialTravel= lastTravel.getLastPartialTravel();
+            int posMode = p.getMode();
+            if (p.isUserInteraction() && p.getUserMode() != null && p.getUserMode() != -1) { // check if user set the mode
+                posMode = p.getUserMode();
             }
-            if(partialTravel != null) {
-                partialTravel.addPosition(p);
+
+            if(posMode == UNKNOWN || posMode == STILL){
+                continue;
             }
-        }
 
-        if(lastTravel.getLastmode() != posMode){ // mode changed
 
-            switch (posMode){
-                case ENTER: // enter in geofence
-                    if(lastTravel.getLastmode() == -1) { // first position
-                        lastTravel.setStart(p.getTimestamp());
-                        partialTravel = new MyPartialTravel();
-                        lastTravel.addPartialTravel(partialTravel);
-                        partialTravel.setStartPosition(p);
-                        partialTravel.addPosition(p);
-                        partialTravel.setMode(UNKNOWN);
+            if (lastTravel.getLastmode() == posMode) { // mode not change, simply add the position to last partial travel
+                if (partialTravel == null) {
+                    partialTravel = lastTravel.getLastPartialTravel();
+                }
+                if (partialTravel != null) {
+                    partialTravel.addPosition(p);
+                }
+            }
 
-                    }
-                    Geofence geo = new Geofence();
-                    geo.setEnterTimestamp(p.getTimestamp().getTime());
-                    geo.setPoint(p.getPosition());
-                    if(partialTravel == null){
-                        partialTravel = lastTravel.getLastPartialTravel();
-                    }
-                    if(partialTravel != null) {
-                        partialTravel.addGeofence(geo);
-                    }
-                    break;
+            if (lastTravel.getLastmode() != posMode) { // mode changed
 
-                case EXIT: // exit geofence
-                    if(partialTravel == null){
-                        partialTravel = lastTravel.getLastPartialTravel();
-                    }
-                    if(partialTravel != null) {
-                        Geofence geoExit = partialTravel.getLastGeofence();
-                        if (geoExit != null) {
-                            geoExit.setExitTimestamp(p.getTimestamp().getTime());
+                switch (posMode) {
+                    case ENTER: // enter in geofence
+                        if (lastTravel.getLastmode() == -1) { // first position
+                            lastTravel.setStart(p.getTimestamp());
+                            partialTravel = new MyPartialTravel();
+                            partialTravel.setStartPosition(p);
+                            lastTravel.addPartialTravel(partialTravel);
+                            partialTravel.addPosition(p);
+                            partialTravel.setMode(UNKNOWN);
                         }
-                    }
-                    finishPartialTravel(lastTravel, p);
-                    lastTravel.setLastmode(posMode);
-                    finishTravel(lastTravel, p);
-                    myTravelRepo.save(lastTravel);
-                    continue;
-
-                case WALKING:
-                case RUNNING:
-                case TILTING:
-                case STILL:
-                case ON_FOOT:
-                    if(lastTravel.getLastmode() == -1){ // first position
-                        lastTravel.setStart(p.getTimestamp());
-                        partialTravel = new MyPartialTravel();
-                        lastTravel.addPartialTravel(partialTravel);
-                        partialTravel.setStartPosition(p);
-                        partialTravel.addPosition(p);
-                        partialTravel.setMode(posMode);
-                        if(p.getMode() == RUNNING || p.getMode() == WALKING || p.getMode() == TILTING){
-                            partialTravel.setMode(ON_FOOT);
-                        }
-                    } else if(lastTravel.getLastmode() == ON_FOOT
-                            || lastTravel.getLastmode() == WALKING
-                            || lastTravel.getLastmode() == TILTING
-                            || lastTravel.getLastmode() == RUNNING
-                            || lastTravel.getLastmode() == STILL){ // simply add the position on partial travel
-                        if(partialTravel == null){
+                        Geofence geo = new Geofence();
+                        geo.setEnterTimestamp(p.getTimestamp().getTime());
+                        geo.setPoint(p.getPosition());
+                        if (partialTravel == null) {
                             partialTravel = lastTravel.getLastPartialTravel();
                         }
-                        if(partialTravel != null) {
-                            partialTravel.addPosition(p);
-                            if (partialTravel.getMode() == UNKNOWN) {
-                                partialTravel.setMode(ON_FOOT);
+                        if (partialTravel != null) {
+                            partialTravel.addGeofence(geo);
+                            finishPartialTravel(lastTravel, p);
+                            lastTravel.setLastmode(posMode);
+                        }
+                        break;
+
+                    case EXIT: // exit geofence
+                        if (partialTravel == null) {
+                            partialTravel = lastTravel.getLastPartialTravel();
+                        }
+                        if (partialTravel != null) {
+                            Geofence geoExit = partialTravel.getLastGeofence();
+                            if (geoExit != null) {
+                                geoExit.setExitTimestamp(p.getTimestamp().getTime());
                             }
                         }
-                    }
-                    else {
-                        if(lastTravel.getLastmode() == ENTER){
-                            if(partialTravel == null){
+                        finishPartialTravel(lastTravel, p);
+                        lastTravel.setLastmode(posMode);
+                        lastTravel = finishTravel(lastTravel, p);
+                        continue;
+
+                    case WALKING:
+                    case RUNNING:
+                    case TILTING:
+                    case STILL:
+                    case ON_FOOT:
+                        if (lastTravel.getLastmode() == -1) { // first position
+                            lastTravel.setStart(p.getTimestamp());
+                            partialTravel = new MyPartialTravel();
+                            partialTravel.setStartPosition(p);
+                            lastTravel.addPartialTravel(partialTravel);
+                            partialTravel.addPosition(p);
+                            partialTravel.setMode(posMode);
+                            if (p.getMode() == RUNNING || p.getMode() == WALKING || p.getMode() == TILTING) {
+                                partialTravel.setMode(ON_FOOT);
+                            }
+                        } else if (lastTravel.getLastmode() == ON_FOOT
+                                || lastTravel.getLastmode() == WALKING
+                                || lastTravel.getLastmode() == TILTING
+                                || lastTravel.getLastmode() == RUNNING
+                                || lastTravel.getLastmode() == STILL) { // simply add the position on partial travel
+                            if (partialTravel == null) {
                                 partialTravel = lastTravel.getLastPartialTravel();
                             }
-                            if(partialTravel != null) {
-                                if (partialTravel.getLastGeofence() != null)
-                                    partialTravel.getLastGeofence().setExitTimestamp(p.getTimestamp().getTime());
+                            if (partialTravel != null) {
+                                partialTravel.addPosition(p);
                                 if (partialTravel.getMode() == UNKNOWN) {
                                     partialTravel.setMode(ON_FOOT);
                                 }
                             }
+                        } else {
+                            if (lastTravel.getLastmode() == ENTER) {
+                                if (partialTravel == null) {
+                                    partialTravel = lastTravel.getLastPartialTravel();
+                                }
+                                if (partialTravel != null) {
+                                    if (partialTravel.getLastGeofence() != null)
+                                        partialTravel.getLastGeofence().setExitTimestamp(p.getTimestamp().getTime());
+                                    if (partialTravel.getMode() == UNKNOWN) {
+                                        partialTravel.setMode(ON_FOOT);
+                                    }
+                                }
+                            }
+                            finishPartialTravel(lastTravel, p);
+                            newPartialTravel(lastTravel, p);
                         }
-                        finishPartialTravel(lastTravel, p);
-                        newPartialTravel(lastTravel, p);
-                    }
-                    break;
-                case ON_BUS:
-                case ON_BICYCLE:
-                case IN_VEHICLE:
+                        break;
+                    case ON_BUS:
+                    case ON_BICYCLE:
+                    case IN_VEHICLE:
 
-                    if(lastTravel.getLastmode() == -1){ // first position
-                        lastTravel.setStart(p.getTimestamp());
-                        partialTravel = new MyPartialTravel();
-                        lastTravel.addPartialTravel(partialTravel);
-                        partialTravel.setStartPosition(p);
-                        partialTravel.addPosition(p);
-                        partialTravel.setMode(posMode);
-                    }else{
-                        finishPartialTravel(lastTravel, p);
-                        newPartialTravel(lastTravel,p);
-                    }
-                    if(partialTravel == null){
-                        partialTravel = lastTravel.getLastPartialTravel();
-                    }
-                    if(partialTravel != null) {
-                        if (partialTravel.getMode() == UNKNOWN) {
+                        if (lastTravel.getLastmode() == -1) { // first position
+                            lastTravel.setStart(p.getTimestamp());
+                            partialTravel = new MyPartialTravel();
+                            partialTravel.setStartPosition(p);
+                            lastTravel.addPartialTravel(partialTravel);
+                            partialTravel.addPosition(p);
                             partialTravel.setMode(posMode);
-                        }
-                    }
-                    break;
-                case ONDESTROY:
-                    finishPartialTravel(lastTravel, p);
-                    lastTravel.setLastmode(posMode);
-                    finishTravel(lastTravel,p);
-                    continue;
-
-                case ONCREATE:
-                    if(partialTravel != null){
-                        if(partialTravel.getEndPosition() == null) {
+                        } else {
                             finishPartialTravel(lastTravel, p);
+                            newPartialTravel(lastTravel, p);
                         }
-                    }
-                    if(lastTravel.getEnd() == null) {
-                        if(lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty()){
-                            //non fare niente
-                        }else{
-                            finishPartialTravel(lastTravel, p);
-                            finishTravel(lastTravel, p);
-                            lastTravel = newTravel(p,passenger,-1);
+                        if (partialTravel == null) {
+                            partialTravel = lastTravel.getLastPartialTravel();
                         }
-                    }
-                    continue;
-
-                case ARRIVED:
-                    finishPartialTravel(lastTravel,p);
-                    if(lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty()){
-                        lastTravel.setLastmode(-1);
-                        myTravelRepo.save(lastTravel);
+                        if (partialTravel != null) {
+                            if (partialTravel.getMode() == UNKNOWN) {
+                                partialTravel.setMode(posMode);
+                            }
+                        }
+                        break;
+                    case ONDESTROY:
+                        finishPartialTravel(lastTravel, p);
+                        lastTravel.setLastmode(posMode);
+                        lastTravel = finishTravel(lastTravel, p);
                         continue;
-                    }else{
-                        finishTravel(lastTravel,p);
-                    }
-                    break;
 
-                default:
-                    break;
+                    case ONCREATE:
+                        if (partialTravel != null) {
+                            if (partialTravel.getEndPosition() == null) {
+                                finishPartialTravel(lastTravel, p);
+                            }
+                        }
+                        if (lastTravel.getEnd() == null) {
+                            if (lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty()) {
+                                //non fare niente
+                            } else {
+                                finishPartialTravel(lastTravel, p);
+                                lastTravel = finishTravel(lastTravel, p);
+                            }
+                        }
+                        continue;
+
+                    case ARRIVED:
+                        finishPartialTravel(lastTravel, p);
+                        if (lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty()) {
+                            lastTravel.setLastmode(-1);
+                            myTravelRepo.save(lastTravel);
+                            continue;
+                        } else {
+                            lastTravel = finishTravel(lastTravel, p);
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
             }
+            if(lastTravel != null) {
+                lastTravel.setLastmode(posMode);
+                if (lastTravel.getEnd() != null && (lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty())) {
+                    continue;
+                }
+                myTravelRepo.save(lastTravel);
+            }
+        } catch (Exception e){
+            throw e;
         }
-
-        lastTravel.setLastmode(posMode);
-        if(lastTravel.getEnd() != null && (lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty())){
-            continue;
         }
-        myTravelRepo.save(lastTravel);
-    }
 
   }
 
@@ -390,10 +395,10 @@ public class AppServiceImpl implements AppService {
       }
 
       if(partial.getEndPosition() == null){
-          DetectedPosition end = partial.getLastPosition();
-          if(end != null) {
-              partial.setEndPosition(end);
-          }
+          //DetectedPosition end = partial.getLastPosition();
+//          if(end != null) {
+              partial.setEndPosition(p);
+//          }
       }
       else{
           logger.warn("partial travel have end position when try to finish it");
@@ -401,13 +406,13 @@ public class AppServiceImpl implements AppService {
 
     }
 
-    private void finishTravel(MyTravel lastTravel, DetectedPosition p) {
+    private MyTravel finishTravel(MyTravel lastTravel, DetectedPosition p) {
         if(lastTravel.getPartialTravels() == null || lastTravel.getPartialTravels().isEmpty()){
-            return;
+            return null;
         }
         lastTravel.setEnd(p.getTimestamp());
         myTravelRepo.save(lastTravel);
-        lastTravel = null;
+        return null;
 
     }
 
